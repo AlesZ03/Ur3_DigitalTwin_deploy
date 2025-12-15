@@ -37,7 +37,7 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        setLogs((data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+        setLogs((data.logs || []).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
         throw new Error(data.error || 'Failed to fetch logs');
@@ -284,11 +284,11 @@ export default function RobotLogsDashboard() {
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Main Content */}
+      <div className="flex flex-row gap-6 mb-6">
 
         {/* Logs */}
-        <div className="lg:col-span-1">
+        <div className="w-1/2">
           {loading && logs.length === 0 ? (
             <div className="text-center py-20">
               <RefreshCw className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
@@ -320,7 +320,7 @@ export default function RobotLogsDashboard() {
         </div>
 
         {/* Commands */}
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="w-1/2 bg-gray-800 rounded-xl p-6 border border-gray-700 self-start">
           <div className="flex items-center gap-2 mb-4">
             <Send className="w-5 h-5 text-blue-400" />
             <h2 className="text-xl font-semibold">Send Commands</h2>
