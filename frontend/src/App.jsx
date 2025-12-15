@@ -17,17 +17,20 @@ export default function RobotLogsDashboard() {
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/command';
 
   const getTimestampFromKey = (key) => {
+    console.log("Processing key:", key);
     if (!key) return null;
     try {
       const filename = key.split('/').pop();
       const dateString = filename.substring(0, 19).replace('_', 'T');
       const date = new Date(dateString);
-      // Check if the date is valid
+      console.log("Parsed date string:", dateString, "Date object:", date);
       if (isNaN(date.getTime())) {
+        console.log("Date is invalid.");
         return null;
       }
       return date;
     } catch (e) {
+      console.error("Error in getTimestampFromKey:", e);
       return null;
     }
   };
@@ -51,6 +54,7 @@ export default function RobotLogsDashboard() {
       }
       
       const data = await response.json();
+      console.log("Received data from API:", data);
       
       if (data.success) {
         const allLogs = (data.logs || []).sort((a, b) => {
