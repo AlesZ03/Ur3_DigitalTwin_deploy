@@ -32,7 +32,7 @@ const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
           <div key={log.key || index} className="bg-gray-900 rounded-lg p-4">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <div className="text-sm text-gray-400">{formatTimestamp(log.timestamp)}</div>
+                <div className="text-sm text-gray-400">{formatTimestamp(log)}</div>
                 {log.message_id && <div className="text-xs text-gray-500 font-mono mt-1">ID: {log.message_id}</div>}
               </div>
               <div className="text-xs text-gray-500">{(log.size / 1024).toFixed(2)} KB</div>

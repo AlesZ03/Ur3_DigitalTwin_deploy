@@ -16,20 +16,34 @@ export default function RobotLogsDashboard() {
   const API_URL = process.env.REACT_APP_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/logs';
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/command';
 
+  const getTimestampFromKey = (key) => {
+    if (!key) return null;
+    try {
+      const filename = key.split('/').pop();
+      const dateString = filename.substring(0, 19).replace('_', 'T');
+      const date = new Date(dateString);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const fetchLogs = async (date = selectedDate) => {
     setLoading(true);
     setError(null);
 
-    // Quick safety check: ensure the API URL was configured at build time
-    if (!API_URL || API_URL.includes('your-api-id') || API_URL.includes('execute-api.region.amazonaws.com')) {
+    if (!API_URL || API_URL.includes('your-api-id')) {
       setLoading(false);
-      setError('Frontend not configured: please set REACT_APP_API_URL in .env.production or Amplify env vars and rebuild.');
+      setError('Frontend not configured: please set REACT_APP_API_URL and rebuild.');
       return;
     }
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      // Fetch all logs for the day, as the API's limit/order behavior is not as expected.
       const response = await fetch(`${API_URL}?date=${dateParam}`);
       
       if (!response.ok) {
@@ -39,8 +53,12 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        // Sort all logs to find the most recent ones and take the last 50.
-        const allLogs = (data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const allLogs = (data.logs || []).sort((a, b) => {
+          const dateA = getTimestampFromKey(a.key);
+          const dateB = getTimestampFromKey(b.key);
+          if (!dateA || !dateB) return 0;
+          return dateB - dateA;
+        });
         const last50Logs = allLogs.slice(0, 50);
         setLogs(last50Logs);
         setLastUpdate(new Date().toLocaleTimeString());
@@ -61,22 +79,16 @@ export default function RobotLogsDashboard() {
 
   useEffect(() => {
     if (!autoRefresh) return;
-
     const interval = setInterval(() => {
       fetchLogs();
     }, 10000); // 10 másodpercenként
-
     return () => clearInterval(interval);
   }, [autoRefresh, selectedDate]);
 
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleString('hu-HU');
-    } catch {
-      return timestamp;
-    }
+  const formatTimestamp = (log) => {
+    const date = getTimestampFromKey(log.key);
+    if (!date) return 'Invalid Date';
+    return date.toLocaleString('hu-HU');
   };
 
   const sendCommand = async (command) => {
