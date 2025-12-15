@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Database, Clock, FileText, AlertCircle, Send } from 'lucide-react';
-import MainLayout from './MainLayout';
+import NewLayout from './NewLayout';
 
 export default function RobotLogsDashboard() {
   const [logs, setLogs] = useState([]);
@@ -37,7 +37,7 @@ export default function RobotLogsDashboard() {
       
       const data = await response.json();
       
-      if (.success) {
+      if (data.success) {
         setLogs((data.logs || []).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
@@ -265,7 +265,7 @@ export default function RobotLogsDashboard() {
         {/* Command Status */}
         {commandStatus && (
           <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
-            commandStatus.type === 'success' ? 'bg-green-900/30 border border-green-500' : 'bg-red-900/30 border border-red-500'
+            commandStatus.type === 'success' ? 'bg-green-900/3d' : 'bg-red-900/30 border border-red-500'
           }`}>
             <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
               commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
@@ -285,7 +285,7 @@ export default function RobotLogsDashboard() {
           </div>
         )}
 
-        <MainLayout
+        <NewLayout
           loading={loading}
           logs={logs}
           formatTimestamp={formatTimestamp}
