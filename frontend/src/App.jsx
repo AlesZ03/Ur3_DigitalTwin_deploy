@@ -28,7 +28,7 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      const response = await fetch(`${API_URL}?date=${dateParam}&limit=500`);
+      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -37,7 +37,7 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        setLogs(data.logs || []);
+        setLogs((data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
         throw new Error(data.error || 'Failed to fetch logs');
@@ -285,10 +285,10 @@ export default function RobotLogsDashboard() {
       )}
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
         {/* Logs */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-1">
           {loading && logs.length === 0 ? (
             <div className="text-center py-20">
               <RefreshCw className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
