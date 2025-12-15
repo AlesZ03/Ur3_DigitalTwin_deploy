@@ -50,21 +50,26 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
-      
+      // Kérjünk több logot, hogy biztosan megkapjuk az utolsó 50-et
+      const response = await fetch(`${API_URL}?date=${dateParam}&limit=200&order=desc`);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        const sortedLogs = (data.logs || []).sort((a, b) => {
-          const dateA = getTimestampFromKey(a.key);
-          const dateB = getTimestampFromKey(b.key);
-          if (!dateA || !dateB) return 0;
-          return dateB - dateA;
-        });
+        // Rendezzük az összes logot timestamp szerint csökkenő sorrendbe
+        const sortedLogs = (data.logs || [])
+          .map(log => ({
+            ...log,
+            parsedDate: getTimestampFromKey(log.key)
+          }))
+          .filter(log => log.parsedDate !== null) // Csak valid dátumokkal
+          .sort((a, b) => b.parsedDate - a.parsedDate) // Csökkenő sorrend (legújabb először)
+          .slice(0, 50); // Vegyük az első 50-et (ezek lesznek a legfrissebbek)
+
         setLogs(sortedLogs);
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
