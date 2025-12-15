@@ -29,7 +29,7 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
+      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=asc`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
