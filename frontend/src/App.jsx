@@ -29,7 +29,8 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
+      // Fetch all logs for the day, as the API's limit/order behavior is not as expected.
+      const response = await fetch(`${API_URL}?date=${dateParam}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -38,7 +39,10 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        setLogs((data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+        // Sort all logs to find the most recent ones and take the last 50.
+        const allLogs = (data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const last50Logs = allLogs.slice(0, 50);
+        setLogs(last50Logs);
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
         throw new Error(data.error || 'Failed to fetch logs');
