@@ -38,7 +38,7 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        setLogs(data.logs || []);
+        setLogs((data.logs || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
         throw new Error(data.error || 'Failed to fetch logs');

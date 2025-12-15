@@ -1,38 +1,50 @@
 import React from 'react';
 import { RefreshCw, FileText, Send } from 'lucide-react';
 
-const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => (
-  <div className="w-1/2">
-    {loading && logs.length === 0 ? (
-      <div className="text-center py-20">
-        <RefreshCw className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
-        <p className="text-gray-400">Loading logs...</p>
+const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
+  if (loading && logs.length === 0) {
+    return (
+      <div className="w-1/2">
+        <div className="text-center py-20 bg-gray-800 rounded-xl border border-gray-700">
+          <RefreshCw className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading logs...</p>
+        </div>
       </div>
-    ) : logs.length === 0 ? (
-      <div className="text-center py-20 bg-gray-800 rounded-xl border border-gray-700">
-        <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-        <p className="text-xl text-gray-400 mb-2">No logs found</p>
-        <p className="text-sm text-gray-500">Try selecting a different date or wait for robot data</p>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="w-1/2">
+        <div className="text-center py-20 bg-gray-800 rounded-xl border border-gray-700">
+          <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <p className="text-xl text-gray-400 mb-2">No logs found</p>
+          <p className="text-sm text-gray-500">Try selecting a different date or wait for robot data</p>
+        </div>
       </div>
-    ) : (
+    );
+  }
+
+  return (
+    <div className="w-1/2 bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="space-y-4">
         {logs.map((log, index) => (
-          <div key={log.key || index} className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition">
-            <div className="flex items-start justify-between mb-4">
+          <div key={log.key || index} className="bg-gray-900 rounded-lg p-4">
+            <div className="flex items-start justify-between mb-3">
               <div>
-                <div className="text-sm text-gray-400 mb-1">{formatTimestamp(log.timestamp)}</div>
-                {log.message_id && <div className="text-xs text-gray-500 font-mono">ID: {log.message_id}</div>}
+                <div className="text-sm text-gray-400">{formatTimestamp(log.timestamp)}</div>
+                {log.message_id && <div className="text-xs text-gray-500 font-mono mt-1">ID: {log.message_id}</div>}
               </div>
               <div className="text-xs text-gray-500">{(log.size / 1024).toFixed(2)} KB</div>
             </div>
-            <div className="bg-gray-900 rounded-lg p-4">{renderRobotData(log.data)}</div>
-            <div className="mt-3 text-xs text-gray-500">S3 Key: {log.key}</div>
+            {renderRobotData(log.data)}
+            <div className="mt-3 text-xs text-gray-500 opacity-75">S3 Key: {log.key}</div>
           </div>
         ))}
       </div>
-    )}
-  </div>
-);
+    </div>
+  );
+};
 
 const CommandPanel = ({ quickCommands, sendCommand, sending, commandInput, setCommandInput, handleSendCustomCommand }) => (
   <div className="w-1/2 bg-gray-800 rounded-xl p-6 border border-gray-700 self-start">
