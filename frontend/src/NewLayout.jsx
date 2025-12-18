@@ -4,7 +4,7 @@ import { RefreshCw, FileText, Send } from 'lucide-react';
 const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
   if (loading && logs.length === 0) {
     return (
-      <div className="w-1/2">
+      <div className="flex-1">
         <div className="text-center py-20 bg-gray-800 rounded-xl border border-gray-700">
           <RefreshCw className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading logs...</p>
@@ -15,7 +15,7 @@ const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
 
   if (logs.length === 0) {
     return (
-      <div className="w-1/2">
+      <div className="flex-1">
         <div className="text-center py-20 bg-gray-800 rounded-xl border border-gray-700">
           <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <p className="text-xl text-gray-400 mb-2">No logs found</p>
@@ -26,7 +26,7 @@ const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
   }
 
   return (
-    <div className="w-1/2 bg-gray-800 rounded-xl p-6 border border-gray-700">
+    <div className="flex-1 bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="space-y-4">
         {logs.map((log, index) => (
           <div key={log.key || index} className="bg-gray-900 rounded-lg p-4">
@@ -47,7 +47,7 @@ const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
 };
 
 const CommandPanel = ({ quickCommands, sendCommand, sending, commandInput, setCommandInput, handleSendCustomCommand }) => (
-  <div className="w-1/2 bg-gray-800 rounded-xl p-6 border border-gray-700 self-start">
+  <div className="flex-1 bg-gray-800 rounded-xl p-6 border border-gray-700 self-start">
     <div className="flex items-center gap-2 mb-4">
       <Send className="w-5 h-5 text-blue-400" />
       <h2 className="text-xl font-semibold">Send Commands</h2>
