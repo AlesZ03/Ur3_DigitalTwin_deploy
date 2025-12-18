@@ -166,34 +166,46 @@ export default function RobotLogsDashboard() {
   const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
 
+    const hasPosition = data.position && Array.isArray(data.position) && data.position.length >= 3;
+
     return (
       <div className="space-y-2">
-        {data.x !== undefined && (
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            <div>
-              <span className="text-gray-400">X:</span>
-              <span className="ml-2 text-blue-400 font-mono">{data.x?.toFixed(2)}</span>
+        {hasPosition ? (
+          <>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <span className="text-gray-400">X:</span>
+                <span className="ml-2 text-blue-400 font-mono">{data.position[0]?.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Y:</span>
+                <span className="ml-2 text-green-400 font-mono">{data.position[1]?.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Z:</span>
+                <span className="ml-2 text-purple-400 font-mono">{data.position[2]?.toFixed(2)}</span>
+              </div>
             </div>
-            <div>
-              <span className="text-gray-400">Y:</span>
-              <span className="ml-2 text-green-400 font-mono">{data.y?.toFixed(2)}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Z:</span>
-              <span className="ml-2 text-purple-400 font-mono">{data.z?.toFixed(2)}</span>
-            </div>
-          </div>
+            {data.position.length >= 6 && (
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div><span className="text-gray-400">Rx:</span><span className="ml-2 text-gray-300 font-mono">{data.position[3]?.toFixed(2)}</span></div>
+                <div><span className="text-gray-400">Ry:</span><span className="ml-2 text-gray-300 font-mono">{data.position[4]?.toFixed(2)}</span></div>
+                <div><span className="text-gray-400">Rz:</span><span className="ml-2 text-gray-300 font-mono">{data.position[5]?.toFixed(2)}</span></div>
+              </div>
+            )}
+          </>
+        ) : data.x !== undefined && (
+          // Fallback for old data format
+          <div className="grid grid-cols-3 gap-2 text-sm">...</div>
         )}
-        
+
         {data.joints && (
           <div className="text-xs">
             <span className="text-gray-400">Joints:</span>
-            <span className="ml-2 text-gray-300 font-mono">
-              [{data.joints.map(j => j?.toFixed(1)).join(', ')}]
-            </span>
+            <span className="ml-2 text-gray-300 font-mono">[{data.joints.map(j => j?.toFixed(1)).join(', ')}]</span>
           </div>
         )}
-        
+
         {data.status && (
           <div className="text-xs">
             <span className="text-gray-400">Status:</span>
@@ -201,7 +213,7 @@ export default function RobotLogsDashboard() {
           </div>
         )}
 
-        {Object.keys(data).filter(k => !['x', 'y', 'z', 'joints', 'status'].includes(k)).length > 0 && (
+        {Object.keys(data).filter(k => !['position', 'joints', 'status'].includes(k)).length > 0 && (
           <details className="text-xs">
             <summary className="text-gray-400 cursor-pointer hover:text-gray-300">
               More data...
