@@ -112,12 +112,12 @@ function RobotModel({ jointData, ...props }) {
       // Ha a modell nem mozog, ellenőrizd a neveket a GLB fájlban (pl. a https://gltf-viewer.donmccurdy.com/ oldalon)
       // és frissítsd ezt a listát. A 'shoulder_pan_joint' és 'shoulder_lift_joint' a leggyakoribb nevek.
       const jointNames = [
-        'Shoulder', // Váll forgatás (pan)
-        'Shoulder', // Váll emelés (lift)
-        'Elbow',    // Könyök
-        'Wrist01',  // Csukló 1
-        'Wrist02',  // Csukló 2
-        'Wrist03'   // Csukló 3
+        'UR3',      // 1. Váll forgatás (pan)
+        'Shoulder', // 2. Váll emelés (lift)
+        'Elbow',    // 3. Könyök
+        'Wrist01',  // 4. Csukló 1
+        'Wrist02',  // 5. Csukló 2
+        'Wrist03'   // 6. Csukló 3
       ];
       jointRefs.current = jointNames.map(name => nodes[name]);
 
@@ -144,22 +144,22 @@ function RobotModel({ jointData, ...props }) {
           const value = jointData[index];
           // A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít.
           switch (index) {
-            case 0: // shoulder_pan_joint
+            case 0: // UR3 (pan)
               joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
               break;
-            case 1: // shoulder_lift_joint
+            case 1: // Shoulder (lift)
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value + Math.PI / 2, 0.1);
               break;
-            case 2: // elbow_joint
+            case 2: // Elbow
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
               break;
-            case 3: // wrist_1_joint
+            case 3: // Wrist01
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
               break;
-            case 4: // wrist_2_joint
+            case 4: // Wrist02
               joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
               break;
-            case 5: // wrist_3_joint
+            case 5: // Wrist03
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
               break;
             default:
