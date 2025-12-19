@@ -113,7 +113,7 @@ function RobotModel({ jointData, ...props }) {
       // és frissítsd ezt a listát. A 'shoulder_pan_joint' és 'shoulder_lift_joint' a leggyakoribb nevek.
       const jointNames = [
         'Shoulder', // Váll forgatás (pan)
-        'UpperArm', // Váll emelés (lift)
+        'Shoulder', // Váll emelés (lift)
         'Elbow',    // Könyök
         'Wrist01',  // Csukló 1
         'Wrist02',  // Csukló 2
