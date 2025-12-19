@@ -157,7 +157,7 @@ function RobotModel({ jointData, ...props }) {
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
               break;
             case 4: // Wrist02
-              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
+              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
               break;
             case 5: // Wrist03
               joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
