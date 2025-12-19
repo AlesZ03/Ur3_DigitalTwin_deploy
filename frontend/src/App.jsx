@@ -113,9 +113,13 @@ export default function RobotLogsDashboard() {
 
     ws.onmessage = (event) => {
       try {
+        console.log("%c[WebSocket] Raw message received:", "color: #00aaff;", event.data);
         const data = JSON.parse(event.data);
         if (data.joint_positions && Array.isArray(data.joint_positions)) {
+          console.log("%c[WebSocket] Parsed joint positions:", "color: #00ff00;", data.joint_positions);
           setRealtimeJointData(data.joint_positions);
+        } else {
+          console.warn("[WebSocket] Received message, but it does not contain a 'joint_positions' array.", data);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
