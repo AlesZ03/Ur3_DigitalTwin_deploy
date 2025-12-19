@@ -103,35 +103,66 @@ const CommandPanel = ({ quickCommands, sendCommand, sending, commandInput, setCo
 );
 
 function RobotModel({ jointData, ...props }) {
-  const { scene, nodes } = useGLTF('/robot.glb');
+  const { scene, nodes } = useGLTF('/robot.glb'); // Győződj meg róla, hogy a modell a public mappában van
+  const jointRefs = React.useRef([]);
 
-  // FONTOS: Ezeknek a neveknek meg kell egyezniük a .glb fájlban lévő csuklók (joint/bone) neveivel.
-  // A konzol log alapján a következő neveket használjuk a te modelledhez.
-  // A 'Shoulder' valószínűleg a forgásért (pan) és az emelésért (lift) is felel, csak más tengelyeken.
-  const joint1 = nodes['Shoulder'];
-  const joint2 = nodes['Shoulder'];
-  const joint3 = nodes['Elbow'];
-  const joint4 = nodes['Wrist01'];
-  const joint5 = nodes['Wrist02'];
-  const joint6 = nodes['Wrist03'];
+  React.useEffect(() => {
+    if (nodes) {
+      // FONTOS: Ezeknek a neveknek PONTOSAN meg kell egyezniük a .glb fájlban lévő csuklók (joint/bone) neveivel.
+      // Ha a modell nem mozog, ellenőrizd a neveket a GLB fájlban (pl. a https://gltf-viewer.donmccurdy.com/ oldalon)
+      // és frissítsd ezt a listát. A 'shoulder_pan_joint' és 'shoulder_lift_joint' a leggyakoribb nevek.
+      const jointNames = [
+        'shoulder_pan_joint',  // Váll forgatás
+        'shoulder_lift_joint', // Váll emelés
+        'elbow_joint',         // Könyök
+        'wrist_1_joint',       // Csukló 1
+        'wrist_2_joint',       // Csukló 2
+        'wrist_3_joint'        // Csukló 3
+      ];
+      jointRefs.current = jointNames.map(name => nodes[name]);
+
+      // Hibakeresés: Kiírjuk, melyik nevet nem találtuk meg
+      jointRefs.current.forEach((ref, index) => {
+        if (!ref) {
+          console.warn(`A(z) '${jointNames[index]}' nevű csuklót nem sikerült megtalálni a 3D modellben! Lehetséges nevek:`, Object.keys(nodes));
+        }
+      });
+    }
+  }, [nodes]);
 
   // A useFrame hook minden egyes képkocka renderelésekor lefut.
   // Itt valósítjuk meg a csuklók animációját.
   useFrame(() => {
     // Csak akkor animálunk, ha van érvényes jointData (6 csukló adatával)
-    if (jointData && jointData.length === 6) {
-      // A `lerp` (lineáris interpoláció) segítségével finoman, animálva mozgatjuk a csuklókat
-      // a jelenlegi pozíciójukból a célpozícióba, ahelyett, hogy hirtelen ugranának.
-      // A 0.1-es érték az animáció sebességét szabályozza (minél nagyobb, annál gyorsabb).
-      // A Three.js radiánban számol, ezért a kapott fokokat átváltjuk (fok * PI / 180).
-      // FONTOS: A bejövő adat radiánban van, nem kell átváltani.
-      // A `+ Math.PI / 2` egy gyakori korrekció a vállízületnél, a modell és a valóság null-pozíciójának eltérése miatt.
-      if (joint1) joint1.rotation.y = THREE.MathUtils.lerp(joint1.rotation.y, jointData[0], 0.1); // shoulder_pan_joint
-      if (joint2) joint2.rotation.z = THREE.MathUtils.lerp(joint2.rotation.z, jointData[1] + Math.PI / 2, 0.1); // shoulder_lift_joint
-      if (joint3) joint3.rotation.z = THREE.MathUtils.lerp(joint3.rotation.z, jointData[2], 0.1); // elbow_joint
-      if (joint4) joint4.rotation.z = THREE.MathUtils.lerp(joint4.rotation.z, jointData[3], 0.1); // wrist_1_joint
-      if (joint5) joint5.rotation.y = THREE.MathUtils.lerp(joint5.rotation.y, jointData[4], 0.1); // wrist_2_joint
-      if (joint6) joint6.rotation.z = THREE.MathUtils.lerp(joint6.rotation.z, jointData[5], 0.1); // wrist_3_joint
+    if (jointData && jointData.length === 6 && jointRefs.current.length === 6) {
+      jointRefs.current.forEach((joint, index) => {
+        if (joint) {
+          const value = jointData[index];
+          // A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít.
+          switch (index) {
+            case 0: // shoulder_pan_joint
+              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
+              break;
+            case 1: // shoulder_lift_joint
+              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value + Math.PI / 2, 0.1);
+              break;
+            case 2: // elbow_joint
+              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
+              break;
+            case 3: // wrist_1_joint
+              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
+              break;
+            case 4: // wrist_2_joint
+              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
+              break;
+            case 5: // wrist_3_joint
+              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
+              break;
+            default:
+              break;
+          }
+        }
+      });
     }
   });
 
