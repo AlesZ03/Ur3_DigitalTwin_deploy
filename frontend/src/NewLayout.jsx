@@ -124,14 +124,14 @@ function RobotModel({ jointData, ...props }) {
       // a jelenlegi pozíciójukból a célpozícióba, ahelyett, hogy hirtelen ugranának.
       // A 0.1-es érték az animáció sebességét szabályozza (minél nagyobb, annál gyorsabb).
       // A Three.js radiánban számol, ezért a kapott fokokat átváltjuk (fok * PI / 180).
-      // FONTOS: A forgatási tengelyek (.y, .z, .x) a 3D modell riggelésétől függnek.
-      // Ha a mozgás nem megfelelő, ezeket kell kísérletezéssel beállítani a saját modelledhez.
-      if (joint1) joint1.rotation.y = THREE.MathUtils.lerp(joint1.rotation.y, jointData[0] * (Math.PI / 180), 0.1);
-      if (joint2) joint2.rotation.z = THREE.MathUtils.lerp(joint2.rotation.z, jointData[1] * (Math.PI / 180), 0.1);
-      if (joint3) joint3.rotation.z = THREE.MathUtils.lerp(joint3.rotation.z, jointData[2] * (Math.PI / 180), 0.1);
-      if (joint4) joint4.rotation.z = THREE.MathUtils.lerp(joint4.rotation.z, jointData[3] * (Math.PI / 180), 0.1);
-      if (joint5) joint5.rotation.y = THREE.MathUtils.lerp(joint5.rotation.y, jointData[4] * (Math.PI / 180), 0.1);
-      if (joint6) joint6.rotation.z = THREE.MathUtils.lerp(joint6.rotation.z, jointData[5] * (Math.PI / 180), 0.1);
+      // FONTOS: A bejövő adat radiánban van, nem kell átváltani.
+      // A `+ Math.PI / 2` egy gyakori korrekció a vállízületnél, a modell és a valóság null-pozíciójának eltérése miatt.
+      if (joint1) joint1.rotation.y = THREE.MathUtils.lerp(joint1.rotation.y, jointData[0], 0.1); // shoulder_pan_joint
+      if (joint2) joint2.rotation.z = THREE.MathUtils.lerp(joint2.rotation.z, jointData[1] + Math.PI / 2, 0.1); // shoulder_lift_joint
+      if (joint3) joint3.rotation.z = THREE.MathUtils.lerp(joint3.rotation.z, jointData[2], 0.1); // elbow_joint
+      if (joint4) joint4.rotation.z = THREE.MathUtils.lerp(joint4.rotation.z, jointData[3], 0.1); // wrist_1_joint
+      if (joint5) joint5.rotation.y = THREE.MathUtils.lerp(joint5.rotation.y, jointData[4], 0.1); // wrist_2_joint
+      if (joint6) joint6.rotation.z = THREE.MathUtils.lerp(joint6.rotation.z, jointData[5], 0.1); // wrist_3_joint
     }
   });
 
@@ -172,14 +172,16 @@ export default function NewLayout({
   commandInput,
   setCommandInput,
   handleSendCustomCommand,
+  realtimeJointData,
 }) {
-  // A legfrissebb logból kinyerjük a csuklók adatait
-  const latestJointData = logs[0]?.data?.joints;
+  // A mozgáshoz a valós idejű WebSocket adatot használjuk, ha van,
+  // egyébként fallbackelünk a legutolsó logban lévő adatra.
+  const jointDataForModel = realtimeJointData || logs[0]?.data?.joints;
 
   return (
     <div className="flex flex-col gap-6 mt-8">
       {/* Felső szekció: Digital Twin */}
-      <DigitalTwinPanel jointData={latestJointData} />
+      <DigitalTwinPanel jointData={jointDataForModel} />
 
       {/* Alsó szekció: Logok és Parancsok */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

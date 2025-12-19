@@ -12,9 +12,11 @@ export default function RobotLogsDashboard() {
   const [commandInput, setCommandInput] = useState('');
   const [sending, setSending] = useState(false);
   const [commandStatus, setCommandStatus] = useState(null);
+  const [realtimeJointData, setRealtimeJointData] = useState(null);
 
   const API_URL = process.env.REACT_APP_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/logs';
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/command';
+  const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL;
 
   const getTimestampFromKey = (key) => {
     if (!key) return null;
@@ -94,6 +96,37 @@ export default function RobotLogsDashboard() {
     }, 10000); // 10 másodpercenként
     return () => clearInterval(interval);
   }, [autoRefresh, selectedDate]);
+
+  // WebSocket connection for real-time Digital Twin
+  useEffect(() => {
+    if (!WEBSOCKET_URL) {
+      console.error("WebSocket URL is not defined in environment variables (REACT_APP_WEBSOCKET_URL).");
+      return;
+    }
+
+    console.log(`Connecting to WebSocket at ${WEBSOCKET_URL}`);
+    const ws = new WebSocket(WEBSOCKET_URL);
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established for real-time data.');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.joint_positions && Array.isArray(data.joint_positions)) {
+          setRealtimeJointData(data.joint_positions);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => console.log('WebSocket connection closed.');
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+
+    return () => ws.close();
+  }, [WEBSOCKET_URL]);
 
   const formatTimestamp = (log) => {
     const date = getTimestampFromKey(log.key);
@@ -334,6 +367,7 @@ export default function RobotLogsDashboard() {
           commandInput={commandInput}
           setCommandInput={setCommandInput}
           handleSendCustomCommand={handleSendCustomCommand}
+          realtimeJointData={realtimeJointData}
         />
       </div>
     </div>
