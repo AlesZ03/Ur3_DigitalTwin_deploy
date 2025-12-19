@@ -134,6 +134,10 @@ function RobotModel({ jointData, ...props }) {
   // Itt valósítjuk meg a csuklók animációját.
   useFrame(() => {
     // Csak akkor animálunk, ha van érvényes jointData (6 csukló adatával)
+
+    // EZ A LOG MEGMUTATJA, HOGY A 3D MODELL MEGAKAPJA-E AZ ADATOT AZ ANIMÁCIÓHOZ
+    if (jointData) console.log("%c[3D Model] Received jointData for animation:", "color: #ff9900;", jointData);
+
     if (jointData && jointData.length === 6 && jointRefs.current.length === 6) {
       jointRefs.current.forEach((joint, index) => {
         if (joint) {
