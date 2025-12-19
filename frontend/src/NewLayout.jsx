@@ -112,12 +112,12 @@ function RobotModel({ jointData, ...props }) {
       // Ha a modell nem mozog, ellenőrizd a neveket a GLB fájlban (pl. a https://gltf-viewer.donmccurdy.com/ oldalon)
       // és frissítsd ezt a listát. A 'shoulder_pan_joint' és 'shoulder_lift_joint' a leggyakoribb nevek.
       const jointNames = [
-        'shoulder_pan_joint',  // Váll forgatás
-        'shoulder_lift_joint', // Váll emelés
-        'elbow_joint',         // Könyök
-        'wrist_1_joint',       // Csukló 1
-        'wrist_2_joint',       // Csukló 2
-        'wrist_3_joint'        // Csukló 3
+        'Shoulder', // Váll forgatás (pan)
+        'UpperArm', // Váll emelés (lift)
+        'Elbow',    // Könyök
+        'Wrist01',  // Csukló 1
+        'Wrist02',  // Csukló 2
+        'Wrist03'   // Csukló 3
       ];
       jointRefs.current = jointNames.map(name => nodes[name]);
 
