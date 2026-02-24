@@ -103,15 +103,12 @@ const CommandPanel = ({ quickCommands, sendCommand, sending, commandInput, setCo
 );
 
 function RobotModel({ jointData, ...props }) {
-  const { scene, nodes } = useGLTF('/robot.glb'); // Győződj meg róla, hogy a modell a public mappában van
+  const { scene, nodes } = useGLTF('/robot.glb'); 
   const jointRefs = React.useRef([]);
 
   React.useEffect(() => {
     if (nodes) {
-      // FONTOS: Ezeknek a neveknek PONTOSAN meg kell egyezniük a .glb fájlban lévő csuklók (joint/bone) neveivel.
-      // Ha a modell nem mozog, ellenőrizd a neveket a GLB fájlban (pl. a https://gltf-viewer.donmccurdy.com/ oldalon)
-      // és frissítsd ezt a listát. A 'shoulder_pan_joint' és 'shoulder_lift_joint' a leggyakoribb nevek.
-      const jointNames = [
+     const jointNames = [
         'UR3',      // 1. Váll forgatás (pan)
         'Shoulder', // 2. Váll emelés (lift)
         'Elbow',    // 3. Könyök
@@ -121,7 +118,6 @@ function RobotModel({ jointData, ...props }) {
       ];
       jointRefs.current = jointNames.map(name => nodes[name]);
 
-      // Hibakeresés: Kiírjuk, melyik nevet nem találtuk meg
       jointRefs.current.forEach((ref, index) => {
         if (!ref) {
           console.warn(`A(z) '${jointNames[index]}' nevű csuklót nem sikerült megtalálni a 3D modellben! Lehetséges nevek:`, Object.keys(nodes));
@@ -130,12 +126,8 @@ function RobotModel({ jointData, ...props }) {
     }
   }, [nodes]);
 
-  // A useFrame hook minden egyes képkocka renderelésekor lefut.
-  // Itt valósítjuk meg a csuklók animációját.
   useFrame(() => {
-    // Csak akkor animálunk, ha van érvényes jointData (6 csukló adatával)
 
-    // EZ A LOG MEGMUTATJA, HOGY A 3D MODELL MEGAKAPJA-E AZ ADATOT AZ ANIMÁCIÓHOZ
     if (jointData) console.log("%c[3D Model] Received jointData for animation:", "color: #ff9900;", jointData);
 
     if (jointData && jointData.length === 6 && jointRefs.current.length === 6) {
@@ -170,8 +162,7 @@ function RobotModel({ jointData, ...props }) {
     }
   });
 
-  // A `scene` objektumot rendereljük, aminek a belső részeit (a csuklókat) a useFrame hook mozgatja.
-  return <primitive object={scene} {...props} />;
+   return <primitive object={scene} {...props} />;
 }
 
 const DigitalTwinPanel = ({ jointData }) => (
@@ -209,9 +200,10 @@ export default function NewLayout({
   handleSendCustomCommand,
   realtimeJointData,
 }) {
-  // A mozgáshoz a valós idejű WebSocket adatot használjuk, ha van,
-  // egyébként fallbackelünk a legutolsó logban lévő adatra.
-  const jointDataForModel = realtimeJointData || logs[0]?.data?.joints;
+
+  // A 3D modellnek a valós idejű adatokat adjuk át, ha vannak.
+  // Ha nincsenek, a legfrissebb logból próbáljuk kinyerni a pozíciót.
+  const jointDataForModel = realtimeJointData || logs[0]?.data?.joint_positions;
 
   return (
     <div className="flex flex-col gap-6 mt-8">

@@ -18,28 +18,6 @@ export default function RobotLogsDashboard() {
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/command';
   const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL;
 
-  const getTimestampFromKey = (key) => {
-    if (!key) return null;
-    try {
-      const filename = key.split('/').pop();
-      const datePart = filename.substring(0, 10); // "2025-12-15"
-      const timePart = filename.substring(11, 19); // "09-42-58"
-
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour, minute, second] = timePart.split('-').map(Number);
-
-      // Month is 0-indexed in JavaScript Date constructor (0-11)
-      const date = new Date(year, month - 1, day, hour, minute, second);
-
-      if (isNaN(date.getTime())) {
-        return null;
-      }
-      return date;
-    } catch (e) {
-      return null;
-    }
-  };
-
   const fetchLogs = async (date = selectedDate) => {
     setLoading(true);
     setError(null);
@@ -52,8 +30,8 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      // Kérjünk több logot, hogy biztosan megkapjuk az utolsó 50-et
-      const response = await fetch(`${API_URL}?date=${dateParam}&limit=200&order=desc`);
+      // A limitet a backend kezeli, itt elég egy ésszerű értéket megadni.
+     const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -62,17 +40,7 @@ export default function RobotLogsDashboard() {
       const data = await response.json();
 
       if (data.success) {
-        // Rendezzük az összes logot timestamp szerint csökkenő sorrendbe
-        const sortedLogs = (data.logs || [])
-          .map(log => ({
-            ...log,
-            parsedDate: getTimestampFromKey(log.key)
-          }))
-          .filter(log => log.parsedDate !== null) // Csak valid dátumokkal
-          .sort((a, b) => b.parsedDate - a.parsedDate) // Csökkenő sorrend (legújabb először)
-          .slice(0, 50); // Vegyük az első 50-et (ezek lesznek a legfrissebbek)
-
-        setLogs(sortedLogs);
+        setLogs(data.logs || []);
         setLastUpdate(new Date().toLocaleTimeString());
       } else {
         throw new Error(data.error || 'Failed to fetch logs');
@@ -93,11 +61,10 @@ export default function RobotLogsDashboard() {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchLogs();
-    }, 10000); // 10 másodpercenként
+    }, 10000); 
     return () => clearInterval(interval);
   }, [autoRefresh, selectedDate]);
 
-  // WebSocket connection for real-time Digital Twin
   useEffect(() => {
     if (!WEBSOCKET_URL) {
       console.error("WebSocket URL is not defined in environment variables (REACT_APP_WEBSOCKET_URL).");
@@ -133,7 +100,8 @@ export default function RobotLogsDashboard() {
   }, [WEBSOCKET_URL]);
 
   const formatTimestamp = (log) => {
-    const date = getTimestampFromKey(log.key);
+    if (!log.timestamp) return 'Invalid Date';
+    const date = new Date(log.timestamp);
     if (!date) return 'Invalid Date';
     return date.toLocaleString('hu-HU');
   };
@@ -141,8 +109,7 @@ export default function RobotLogsDashboard() {
   const sendCommand = async (command) => {
     setSending(true);
     setCommandStatus(null);
-
-    if (!COMMAND_API_URL || COMMAND_API_URL.includes('your-api-id') || COMMAND_API_URL.includes('execute-api.region.amazonaws.com')) {
+    if (!COMMAND_API_URL || COMMAND_API_URL.includes('your-api-id')) {
       setCommandStatus({ type: 'error', message: 'Frontend not configured: set REACT_APP_COMMAND_API_URL and rebuild.' });
       setSending(false);
       return;
@@ -194,57 +161,29 @@ export default function RobotLogsDashboard() {
   };
 
   const quickCommands = [
-    { label: 'Home', command: { action: 'home' } },
+    { label: 'Home Position', command: { action: 'move', joints: [0.0, -1.57, 1.57, -1.57, -1.57, 0.0] } },
     { label: 'Stop', command: { action: 'stop' } },
-    { label: 'Move Up', command: { action: 'move', axis: 'z', value: 10 } },
-    { label: 'Move Down', command: { action: 'move', axis: 'z', value: -10 } }
+    { label: 'Test Position 1', command: { action: 'move', joints: [1.0, -1.8, 2.0, -1.7, -1.57, 0.0] } },
+    { label: 'Test Position 2', command: { action: 'move', joints: [-1.0, -1.2, -2.0, -1.5, -1.57, 0.0] } }
   ];
 
   const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
 
-    const hasPosition = data.position && Array.isArray(data.position) && data.position.length >= 3;
+    // Javítás: a 'joints' helyett 'joint_positions'-t használunk, ahogy az a backendről érkezik.
+    const jointData = data.joint_positions || data.joints;
 
     return (
       <div className="space-y-2">
-        {hasPosition ? (
-          <>
-            <div className="grid grid-cols-3 gap-2 text-sm">
-              <div>
-                <span className="text-gray-400">X:</span>
-                <span className="ml-2 text-blue-400 font-mono">{data.position[0]?.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Y:</span>
-                <span className="ml-2 text-green-400 font-mono">{data.position[1]?.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Z:</span>
-                <span className="ml-2 text-purple-400 font-mono">{data.position[2]?.toFixed(2)}</span>
-              </div>
-            </div>
-            {data.position.length >= 6 && (
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div><span className="text-gray-400">Rx:</span><span className="ml-2 text-gray-300 font-mono">{data.position[3]?.toFixed(2)}</span></div>
-                <div><span className="text-gray-400">Ry:</span><span className="ml-2 text-gray-300 font-mono">{data.position[4]?.toFixed(2)}</span></div>
-                <div><span className="text-gray-400">Rz:</span><span className="ml-2 text-gray-300 font-mono">{data.position[5]?.toFixed(2)}</span></div>
-              </div>
-            )}
-          </>
-        ) : data.x !== undefined && (
-          // Fallback for old data format
-          <div className="grid grid-cols-3 gap-2 text-sm">...</div>
-        )}
-
-        {data.joints && (
+        {jointData && (
           <div className="text-xs">
             <span className="text-gray-400">Joints:</span>
-            <span className="ml-2 text-gray-300 font-mono">[{data.joints.map(j => j?.toFixed(1)).join(', ')}]</span>
+            <span className="ml-2 text-gray-300 font-mono">[{jointData.map(j => j?.toFixed(2)).join(', ')}]</span>
           </div>
         )}
 
         {data.status && (
-          <div className="text-xs">
+          <div className="text-xs mt-1">
             <span className="text-gray-400">Status:</span>
             <span className="ml-2 text-green-400">{data.status}</span>
           </div>
@@ -255,7 +194,7 @@ export default function RobotLogsDashboard() {
             <summary className="text-gray-400 cursor-pointer hover:text-gray-300">
               More data...
             </summary>
-            <pre className="mt-2 text-gray-300 font-mono overflow-x-auto">
+            <pre className="mt-2 p-2 bg-gray-900/50 rounded text-gray-300 font-mono text-[10px] leading-relaxed overflow-x-auto">
               {JSON.stringify(data, null, 2)}
             </pre>
           </details>
@@ -340,7 +279,7 @@ export default function RobotLogsDashboard() {
         {/* Command Status */}
         {commandStatus && (
           <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
-            commandStatus.type === 'success' ? 'bg-green-900/3d' : 'bg-red-900/30 border border-red-500'
+            commandStatus.type === 'success' ? 'bg-green-900/30 border border-green-700' : 'bg-red-900/30 border border-red-500'
           }`}>
             <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
               commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
