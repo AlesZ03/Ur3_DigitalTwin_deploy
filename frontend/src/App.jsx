@@ -13,6 +13,7 @@ export default function RobotLogsDashboard() {
   const [sending, setSending] = useState(false);
   const [commandStatus, setCommandStatus] = useState(null);
   const [realtimeJointData, setRealtimeJointData] = useState(null);
+  const [quickCommands, setQuickCommands] = useState([]);
 
   const API_URL = process.env.REACT_APP_API_URL ;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
@@ -39,8 +40,7 @@ export default function RobotLogsDashboard() {
 
       const data = await response.json();
 
-      // A backend most már közvetlenül a log objektumok tömbjét adja vissza sikeres esetben.
-      setLogs(data || []); // Ha a data null vagy undefined, akkor üres tömböt használunk
+      setLogs(data || []); 
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Error fetching logs:', err);
@@ -61,6 +61,27 @@ export default function RobotLogsDashboard() {
     }, 10000); 
     return () => clearInterval(interval);
   }, [autoRefresh, selectedDate]);
+
+  useEffect(() => {
+    const fetchQuickCommands = async () => {
+      if (!COMMAND_API_URL || COMMAND_API_URL.includes('your-api-id')) {
+        console.warn("COMMAND_API_URL not configured, quick commands will not be available.");
+        return;
+      }
+      try {
+        // A /quick végpontot a backend /command API-ja szolgáltatja
+        const response = await fetch(`${COMMAND_API_URL}/quick`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch quick commands: ${response.status}`);
+        }
+        const commands = await response.json();
+        setQuickCommands(commands);
+      } catch (err) {
+        console.error("Error fetching quick commands:", err);
+      }
+    };
+    fetchQuickCommands();
+  }, [COMMAND_API_URL]);
 
   useEffect(() => {
     if (!WEBSOCKET_URL) {
@@ -97,9 +118,11 @@ export default function RobotLogsDashboard() {
   }, [WEBSOCKET_URL]);
 
   const formatTimestamp = (log) => {
-    if (!log.timestamp) return 'Invalid Date';
-    const date = new Date(log.timestamp);
-    if (!date) return 'Invalid Date';
+    // A 'received_at' mező ISO formátumú, amit a new Date() helyesen tud értelmezni.
+    // A 'log.timestamp' egyedi formátumú, amit a böngészők nem feltétlenül ismernek.
+    if (!log.received_at) return 'Invalid Date';
+    const date = new Date(log.received_at);
+    if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleString('hu-HU');
   };
 
@@ -156,13 +179,6 @@ export default function RobotLogsDashboard() {
       });
     }
   };
-
-  const quickCommands = [
-    { label: 'Home Position', command: { action: 'move', joints: [0.0, -1.57, 1.57, -1.57, -1.57, 0.0] } },
-    { label: 'Stop', command: { action: 'stop' } },
-    { label: 'Test Position 1', command: { action: 'move', joints: [1.0, -1.8, 2.0, -1.7, -1.57, 0.0] } },
-    { label: 'Test Position 2', command: { action: 'move', joints: [-1.0, -1.2, -2.0, -1.5, -1.57, 0.0] } }
-  ];
 
   const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
