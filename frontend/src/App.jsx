@@ -17,6 +17,7 @@ export default function RobotLogsDashboard() {
 
   const API_URL = process.env.REACT_APP_API_URL ;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
+  const QUICK_COMMAND_API_URL = process.env.REACT_APP_COMMAND_QUICK_API_URL;
   const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL;
 
   const fetchLogs = async (date = selectedDate) => {
@@ -64,13 +65,13 @@ export default function RobotLogsDashboard() {
 
   useEffect(() => {
     const fetchQuickCommands = async () => {
-      if (!COMMAND_API_URL || COMMAND_API_URL.includes('your-api-id')) {
-        console.warn("COMMAND_API_URL not configured, quick commands will not be available.");
+      if (!QUICK_COMMAND_API_URL || QUICK_COMMAND_API_URL.includes('your-api-id')) {
+        console.warn("QUICK_COMMAND_API_URL not configured, quick commands will not be available.");
         return;
       }
       try {
         // A /quick végpontot a backend /command API-ja szolgáltatja
-        const response = await fetch(`${COMMAND_API_URL}/quick`);
+        const response = await fetch(QUICK_COMMAND_API_URL);
         if (!response.ok) {
           throw new Error(`Failed to fetch quick commands: ${response.status}`);
         }
@@ -81,7 +82,7 @@ export default function RobotLogsDashboard() {
       }
     };
     fetchQuickCommands();
-  }, [COMMAND_API_URL]);
+  }, [QUICK_COMMAND_API_URL]);
 
   useEffect(() => {
     if (!WEBSOCKET_URL) {
