@@ -14,8 +14,8 @@ export default function RobotLogsDashboard() {
   const [commandStatus, setCommandStatus] = useState(null);
   const [realtimeJointData, setRealtimeJointData] = useState(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/logs';
-  const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL || 'https://your-api-id.execute-api.region.amazonaws.com/prod/command';
+  const API_URL = process.env.REACT_APP_API_URL ;
+  const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
   const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL;
 
   const fetchLogs = async (date = selectedDate) => {
@@ -30,7 +30,7 @@ export default function RobotLogsDashboard() {
 
     try {
       const dateParam = date.replace(/-/g, '/');
-      // A limitet a backend kezeli, itt elég egy ésszerű értéket megadni.
+
      const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
 
       if (!response.ok) {
@@ -170,7 +170,6 @@ export default function RobotLogsDashboard() {
   const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
 
-    // Javítás: a 'joints' helyett 'joint_positions'-t használunk, ahogy az a backendről érkezik.
     const jointData = data.joint_positions || data.joints;
 
     return (

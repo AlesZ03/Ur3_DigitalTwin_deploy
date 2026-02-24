@@ -106,57 +106,45 @@ function RobotModel({ jointData, ...props }) {
   const { scene, nodes } = useGLTF('/robot.glb'); 
   const jointRefs = React.useRef([]);
 
+
+  const JOINT_MAPPING = React.useMemo(() => [
+    { name: 'UR3',      axis: 'y', correction: (val) => val },                // Joint 0: Váll forgatás (pan)
+    { name: 'Shoulder', axis: 'z', correction: (val) => val + Math.PI / 2 },  // Joint 1: Váll emelés (lift)
+    { name: 'Elbow',    axis: 'z', correction: (val) => val },                // Joint 2: Könyök
+    { name: 'Wrist01',  axis: 'y', correction: (val) => -val },               // Joint 3: Csukló 1
+    { name: 'Wrist02',  axis: 'z', correction: (val) => val },                // Joint 4: Csukló 2
+    { name: 'Wrist03',  axis: 'y', correction: (val) => val },                // Joint 5: Csukló 3
+  ], []);
+
   React.useEffect(() => {
     if (nodes) {
-     const jointNames = [
-        'UR3',      // 1. Váll forgatás (pan)
-        'Shoulder', // 2. Váll emelés (lift)
-        'Elbow',    // 3. Könyök
-        'Wrist01',  // 4. Csukló 1
-        'Wrist02',  // 5. Csukló 2
-        'Wrist03'   // 6. Csukló 3
-      ];
-      jointRefs.current = jointNames.map(name => nodes[name]);
+      jointRefs.current = JOINT_MAPPING.map(mapping => nodes[mapping.name]);
 
       jointRefs.current.forEach((ref, index) => {
         if (!ref) {
-          console.warn(`A(z) '${jointNames[index]}' nevű csuklót nem sikerült megtalálni a 3D modellben! Lehetséges nevek:`, Object.keys(nodes));
+          console.warn(`A(z) '${JOINT_MAPPING[index].name}' nevű csuklót nem sikerült megtalálni a 3D modellben! Lehetséges nevek:`, Object.keys(nodes));
         }
       });
     }
-  }, [nodes]);
+  }, [nodes, JOINT_MAPPING]);
 
   useFrame(() => {
-
-    if (jointData) console.log("%c[3D Model] Received jointData for animation:", "color: #ff9900;", jointData);
-
     if (jointData && jointData.length === 6 && jointRefs.current.length === 6) {
       jointRefs.current.forEach((joint, index) => {
         if (joint) {
-          const value = jointData[index];
-          // A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít.
-          switch (index) {
-            case 0: // UR3 (pan)
-              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
-              break;
-            case 1: // Shoulder (lift)
-              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value + Math.PI / 2, 0.1);
-              break;
-            case 2: // Elbow
-              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
-              break;
-            case 3: // Wrist01
-              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, -value, 0.1);
-              break;
-            case 4: // Wrist02
-              joint.rotation.z = THREE.MathUtils.lerp(joint.rotation.z, value, 0.1);
-              break;
-            case 5: // Wrist03
-              joint.rotation.y = THREE.MathUtils.lerp(joint.rotation.y, value, 0.1);
-              break;
-            default:
-              break;
-          }
+          const mapping = JOINT_MAPPING[index];
+          const rawValue = jointData[index];
+          
+          // 1. Alkalmazzuk a modell-specifikus korrekciót
+          const targetRotation = mapping.correction(rawValue);
+          
+          // 2. A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít
+          // a jelenlegi és a célrotáció között.
+          joint.rotation[mapping.axis] = THREE.MathUtils.lerp(
+            joint.rotation[mapping.axis], 
+            targetRotation, 
+            0.1
+          );
         }
       });
     }
