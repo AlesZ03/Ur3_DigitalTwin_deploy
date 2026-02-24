@@ -39,12 +39,9 @@ export default function RobotLogsDashboard() {
 
       const data = await response.json();
 
-      if (data.success) {
-        setLogs(data.logs || []);
-        setLastUpdate(new Date().toLocaleTimeString());
-      } else {
-        throw new Error(data.error || 'Failed to fetch logs');
-      }
+      // A backend most már közvetlenül a log objektumok tömbjét adja vissza sikeres esetben.
+      setLogs(data || []); // Ha a data null vagy undefined, akkor üres tömböt használunk
+      setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Error fetching logs:', err);
       setError(err.message);
