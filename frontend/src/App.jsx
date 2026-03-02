@@ -14,6 +14,8 @@ export default function RobotLogsDashboard() {
   const [commandStatus, setCommandStatus] = useState(null);
   const [realtimeJointData, setRealtimeJointData] = useState(null);
   const [quickCommands, setQuickCommands] = useState([]);
+  const [isLive, setIsLive] = useState(false);
+  const liveTimeoutRef = React.useRef(null);
 
   const API_URL = process.env.REACT_APP_API_URL ;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
@@ -98,6 +100,15 @@ export default function RobotLogsDashboard() {
 
     ws.onmessage = (event) => {
       try {
+        // Visszajelzés, hogy élő adat jön
+        setIsLive(true);
+        // Timeout törlése, ha van
+        if (liveTimeoutRef.current) {
+          clearTimeout(liveTimeoutRef.current);
+        }
+        // Új timeout beállítása, ami 2 másodperc után offline-ra állítja
+        liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
+
         console.log("%c[WebSocket] Raw message received:", "color: #00aaff;", event.data);
         const data = JSON.parse(event.data);
         if (data.joint_positions && Array.isArray(data.joint_positions)) {
@@ -111,10 +122,17 @@ export default function RobotLogsDashboard() {
       }
     };
 
-    ws.onclose = () => console.log('WebSocket connection closed.');
+    ws.onclose = () => {
+      console.log('WebSocket connection closed.');
+      setIsLive(false);
+      if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+    };
     ws.onerror = (error) => console.error('WebSocket error:', error);
 
-    return () => ws.close();
+    return () => {
+      if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+      ws.close();
+    };
   }, [WEBSOCKET_URL]);
 
   const formatTimestamp = (log) => {
@@ -321,6 +339,7 @@ export default function RobotLogsDashboard() {
           setCommandInput={setCommandInput}
           handleSendCustomCommand={handleSendCustomCommand}
           realtimeJointData={realtimeJointData}
+          isLive={isLive}
         />
       </div>
     </div>

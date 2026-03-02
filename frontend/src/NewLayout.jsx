@@ -108,12 +108,12 @@ function RobotModel({ jointData, ...props }) {
 
 
   const JOINT_MAPPING = React.useMemo(() => [
-    { name: 'UR3',      axis: 'y', correction: (val) => val },                // Joint 0: Váll forgatás (pan)
-    { name: 'Shoulder', axis: 'z', correction: (val) => val + Math.PI / 2 },  // Joint 1: Váll emelés (lift)
-    { name: 'Elbow',    axis: 'z', correction: (val) => val },                // Joint 2: Könyök
-    { name: 'Wrist01',  axis: 'y', correction: (val) => -val },               // Joint 3: Csukló 1
-    { name: 'Wrist02',  axis: 'z', correction: (val) => val },                // Joint 4: Csukló 2
-    { name: 'Wrist03',  axis: 'y', correction: (val) => val },                // Joint 5: Csukló 3
+    { name: 'UR3',      axis: 'y' }, // Joint 0: Váll forgatás (pan)
+    { name: 'Shoulder', axis: 'z' }, // Joint 1: Váll emelés (lift)
+    { name: 'Elbow',    axis: 'z' }, // Joint 2: Könyök
+    { name: 'Wrist01',  axis: 'y' }, // Joint 3: Csukló 1
+    { name: 'Wrist02',  axis: 'z' }, // Joint 4: Csukló 2
+    { name: 'Wrist03',  axis: 'y' }, // Joint 5: Csukló 3
   ], []);
 
   React.useEffect(() => {
@@ -133,13 +133,10 @@ function RobotModel({ jointData, ...props }) {
       jointRefs.current.forEach((joint, index) => {
         if (joint) {
           const mapping = JOINT_MAPPING[index];
-          const rawValue = jointData[index];
+          const targetRotation = jointData[index];
           
-          // 1. Alkalmazzuk a modell-specifikus korrekciót
-          const targetRotation = mapping.correction(rawValue);
-          
-          // 2. A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít
-          // a jelenlegi és a célrotáció között.
+          // A `lerp` (lineáris interpoláció) finom, animált mozgást biztosít
+          // a jelenlegi és a célrotáció között. A backendről már a korrigált érték érkezik.
           joint.rotation[mapping.axis] = THREE.MathUtils.lerp(
             joint.rotation[mapping.axis], 
             targetRotation, 
@@ -153,12 +150,31 @@ function RobotModel({ jointData, ...props }) {
    return <primitive object={scene} {...props} />;
 }
 
-const DigitalTwinPanel = ({ jointData }) => (
+const LiveIndicator = ({ isLive }) => {
+  if (isLive) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+        Live
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs font-medium">
+      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+      Offline
+    </div>
+  );
+};
+
+const DigitalTwinPanel = ({ jointData, isLive }) => (
   <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-    <div className="flex items-center gap-2 mb-4">
-      {/* Egy egyszerű ikon a Digital Twin-hez */}
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="m12 9-3 5h6l-3-5Z"/></svg>
-      <h2 className="text-xl font-semibold">Digital Twin</h2>
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="m12 9-3 5h6l-3-5Z"/></svg>
+        <h2 className="text-xl font-semibold">Digital Twin</h2>
+      </div>
+      <LiveIndicator isLive={isLive} />
     </div>
     <div className="aspect-video bg-gray-900 rounded-lg border border-gray-700">
       <Canvas camera={{ position: [0, 2, 5], fov: 50 }}>
@@ -187,6 +203,7 @@ export default function NewLayout({
   setCommandInput,
   handleSendCustomCommand,
   realtimeJointData,
+  isLive,
 }) {
 
   // A 3D modellnek a valós idejű adatokat adjuk át, ha vannak.
@@ -196,7 +213,7 @@ export default function NewLayout({
   return (
     <div className="flex flex-col gap-6 mt-8">
       {/* Felső szekció: Digital Twin */}
-      <DigitalTwinPanel jointData={jointDataForModel} />
+      <DigitalTwinPanel jointData={jointDataForModel} isLive={isLive} />
 
       {/* Alsó szekció: Logok és Parancsok */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
