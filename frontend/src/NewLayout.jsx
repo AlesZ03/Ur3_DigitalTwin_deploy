@@ -191,7 +191,7 @@ export default function NewLayout({
 
   // A 3D modellnek a valós idejű adatokat adjuk át, ha vannak.
   // Ha nincsenek, a legfrissebb logból próbáljuk kinyerni a pozíciót.
-  const jointDataForModel = realtimeJointData || logs[0]?.data?.joint_positions;
+  const jointDataForModel = realtimeJointData //|| logs[0]?.data?.joint_positions;
 
   return (
     <div className="flex flex-col gap-6 mt-8">

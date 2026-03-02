@@ -70,7 +70,6 @@ export default function RobotLogsDashboard() {
         return;
       }
       try {
-        // A /quick végpontot a backend /command API-ja szolgáltatja
         const response = await fetch(QUICK_COMMAND_API_URL);
         if (!response.ok) {
           throw new Error(`Failed to fetch quick commands: ${response.status}`);
@@ -119,9 +118,7 @@ export default function RobotLogsDashboard() {
   }, [WEBSOCKET_URL]);
 
   const formatTimestamp = (log) => {
-    // A 'received_at' mező ISO formátumú, amit a new Date() helyesen tud értelmezni.
-    // A 'log.timestamp' egyedi formátumú, amit a böngészők nem feltétlenül ismernek.
-    if (!log.received_at) return 'Invalid Date';
+       if (!log.received_at) return 'Invalid Date';
     const date = new Date(log.received_at);
     if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleString('hu-HU');
