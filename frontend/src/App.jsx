@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Database, Clock, FileText, AlertCircle, Send } from 'lucide-react';
+import { API, graphqlOperation } from 'aws-amplify';
 import NewLayout from './NewLayout';
 
 export default function RobotLogsDashboard() {
@@ -20,7 +21,6 @@ export default function RobotLogsDashboard() {
   const API_URL = process.env.REACT_APP_API_URL ;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
   const QUICK_COMMAND_API_URL = process.env.REACT_APP_COMMAND_QUICK_API_URL;
-  const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL;
 
   const fetchLogs = async (date = selectedDate) => {
     setLoading(true);
@@ -86,54 +86,46 @@ export default function RobotLogsDashboard() {
   }, [QUICK_COMMAND_API_URL]);
 
   useEffect(() => {
-    if (!WEBSOCKET_URL) {
-      console.error("WebSocket URL is not defined in environment variables (REACT_APP_WEBSOCKET_URL).");
-      return;
-    }
+    // GraphQL subscription for real-time data
+    const thingName = "UR3-Robot-001"; // Ezt a nevet a robot oldali kliens ID-val kell egyeztetni
 
-    console.log(`Connecting to WebSocket at ${WEBSOCKET_URL}`);
-    const ws = new WebSocket(WEBSOCKET_URL);
-
-    ws.onopen = () => {
-      console.log('WebSocket connection established for real-time data.');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        // Visszajelzés, hogy élő adat jön
-        setIsLive(true);
-        // Timeout törlése, ha van
-        if (liveTimeoutRef.current) {
-          clearTimeout(liveTimeoutRef.current);
+    const subscriptionQuery = /* GraphQL */ `
+      subscription OnUpdateThingShadow($thingName: String!) {
+        onUpdateThingShadow(thingName: $thingName) {
+          state {
+            reported {
+              joint_positions
+              timestamp
+            }
+          }
         }
-        // Új timeout beállítása, ami 2 másodperc után offline-ra állítja
-        liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
-
-        console.log("%c[WebSocket] Raw message received:", "color: #00aaff;", event.data);
-        const data = JSON.parse(event.data);
-        if (data.joint_positions && Array.isArray(data.joint_positions)) {
-          console.log("%c[WebSocket] Parsed joint positions:", "color: #00ff00;", data.joint_positions);
-          setRealtimeJointData(data.joint_positions);
-        } else {
-          console.warn("[WebSocket] Received message, but it does not contain a 'joint_positions' array.", data);
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
       }
-    };
+    `;
 
-    ws.onclose = () => {
-      console.log('WebSocket connection closed.');
-      setIsLive(false);
-      if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
+    const subscription = API.graphql(
+      graphqlOperation(subscriptionQuery, { thingName })
+    ).subscribe({
+      next: ({ provider, value }) => {
+        const shadowData = value.data.onUpdateThingShadow;
+        console.log("[AppSync] Shadow update received:", shadowData);
+
+        if (shadowData?.state?.reported?.joint_positions) {
+          setRealtimeJointData(shadowData.state.reported.joint_positions);
+          
+          // Visszajelzés, hogy élő adat jön
+          setIsLive(true);
+          if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+          liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
+        }
+      },
+      error: (error) => console.error("[AppSync] Subscription error:", error),
+    });
 
     return () => {
+      subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
-      ws.close();
     };
-  }, [WEBSOCKET_URL]);
+  }, []); // Only run on mount
 
   const formatTimestamp = (log) => {
        if (!log.received_at) return 'Invalid Date';
