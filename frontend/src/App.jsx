@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Database, Clock, FileText, AlertCircle, Send } from 'lucide-react';
-import { API, graphqlOperation } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
 
 export default function RobotLogsDashboard() {
@@ -17,6 +17,9 @@ export default function RobotLogsDashboard() {
   const [quickCommands, setQuickCommands] = useState([]);
   const [isLive, setIsLive] = useState(false);
   const liveTimeoutRef = React.useRef(null);
+
+  // Create the Amplify client (v6+ style)
+  const client = generateClient();
 
   const API_URL = process.env.REACT_APP_API_URL ;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
@@ -102,9 +105,10 @@ export default function RobotLogsDashboard() {
       }
     `;
 
-    const subscription = API.graphql(
-      graphqlOperation(subscriptionQuery, { thingName })
-    ).subscribe({
+    const subscription = client.graphql({
+      query: subscriptionQuery,
+      variables: { thingName }
+    }).subscribe({
       next: ({ provider, value }) => {
         const shadowData = value.data.onUpdateThingShadow;
         console.log("[AppSync] Shadow update received:", shadowData);
