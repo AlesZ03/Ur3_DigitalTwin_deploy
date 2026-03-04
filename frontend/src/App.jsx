@@ -93,8 +93,8 @@ export default function RobotLogsDashboard() {
     const thingName = "UR3-Robot-001"; // Ezt a nevet a robot oldali kliens ID-val kell egyeztetni
 
     const subscriptionQuery = /* GraphQL */ `
-      subscription OnUpdateThingShadow($thingName: String!) {
-        onUpdateThingShadow(thingName: $thingName) {
+      subscription OnShadowUpdate($thingName: String!) {
+        onShadowUpdate(thingName: $thingName) {
           state {
             reported {
               joint_positions
@@ -110,7 +110,7 @@ export default function RobotLogsDashboard() {
       variables: { thingName }
     }).subscribe({
       next: ({ provider, value }) => {
-        const shadowData = value.data.onUpdateThingShadow;
+        const shadowData = value.data.onShadowUpdate;
         console.log("[AppSync] Shadow update received:", shadowData);
 
         if (shadowData?.state?.reported?.joint_positions) {
