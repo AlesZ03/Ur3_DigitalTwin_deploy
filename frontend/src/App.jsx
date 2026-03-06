@@ -107,8 +107,10 @@ export default function RobotLogsDashboard() {
     const subscription = client.graphql({
       query: subscriptionQuery
     }).subscribe({
-      next: ({ provider, value }) => {
-        const shadowData = value.data.onUr3ShadowUpdate;
+      // A { provider, value } helyett most már egyből a { data } jön!
+      next: ({ data }) => {
+        // Így már közvetlenül a data objektumból tudjuk olvasni a mutációt
+        const shadowData = data.onUr3ShadowUpdate;
         console.log("[AppSync] Shadow update received:", shadowData);
 
         if (shadowData?.state?.reported?.joint_positions) {
@@ -122,7 +124,6 @@ export default function RobotLogsDashboard() {
       },
       error: (error) => console.error("[AppSync] Subscription error:", error),
     });
-
     return () => {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
