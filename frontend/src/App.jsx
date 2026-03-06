@@ -126,8 +126,7 @@ export default function RobotLogsDashboard() {
 
         if (initialShadow?.state?.reported?.joint_positions) {
           setRealtimeJointData(initialShadow.state.reported.joint_positions);
-          // Opcionálisan beállíthatod az isLive-ot is egy pillanatra, hogy látszódjon a frissülés
-          setIsLive(true);
+
           setTimeout(() => setIsLive(false), 2000);
         }
       } catch (err) {
@@ -148,15 +147,14 @@ export default function RobotLogsDashboard() {
         if (shadowData?.state?.reported?.joint_positions) {
           setRealtimeJointData(shadowData.state.reported.joint_positions);
           
-          // MEGOLDÁS: Csak akkor kapcsolunk Live-ra, ha FRISS az adat
-          const msgTimestamp = shadowData.state.reported.timestamp; // Ez másodpercben van
+          
+          const msgTimestamp = shadowData.state.reported.timestamp;
           const now = Date.now() / 1000;
 
-          // Ha az üzenet 5 másodpercnél nem régebbi, akkor tényleg LIVE
           if (now - msgTimestamp < 5) {
             setIsLive(true);
             if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
-            // Ha 3 másodpercig nem jön új üzenet, elalszik a zöld lámpa
+           
             liveTimeoutRef.current = setTimeout(() => setIsLive(false), 3000);
           } else {
             setIsLive(false);
