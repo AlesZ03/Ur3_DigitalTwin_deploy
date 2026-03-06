@@ -114,7 +114,7 @@ export default function RobotLogsDashboard() {
       }
     `;
 
-    // --- ÚJ RÉSZ: Kezdeti állapot lekérése ---
+   
     const fetchInitialState = async () => {
       try {
         const response = await client.graphql({
@@ -134,9 +134,9 @@ export default function RobotLogsDashboard() {
       }
     };
 
-    // Meghívjuk az aszinkron lekérdezést
+
     fetchInitialState();
-    // ----------------------------------------
+ 
 
     const subscription = client.graphql({
       query: subscriptionQuery
@@ -170,7 +170,7 @@ export default function RobotLogsDashboard() {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
     };
-  }, []); // Only run on mount
+  }, []); 
 
 
   const formatTimestamp = (log) => {
