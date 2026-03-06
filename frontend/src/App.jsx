@@ -144,26 +144,37 @@ export default function RobotLogsDashboard() {
     }).subscribe({
       next: ({ data }) => {
         const shadowData = data.onUr3ShadowUpdate;
-        console.log("[AppSync] Shadow update received:", shadowData);
-
+        
         if (shadowData?.state?.reported?.joint_positions) {
           setRealtimeJointData(shadowData.state.reported.joint_positions);
           
-          setIsLive(true);
-          if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
-          liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
+          // MEGOLDÁS: Csak akkor kapcsolunk Live-ra, ha FRISS az adat
+          const msgTimestamp = shadowData.state.reported.timestamp; // Ez másodpercben van
+          const now = Date.now() / 1000;
+
+          // Ha az üzenet 5 másodpercnél nem régebbi, akkor tényleg LIVE
+          if (now - msgTimestamp < 5) {
+            setIsLive(true);
+            if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
+            // Ha 3 másodpercig nem jön új üzenet, elalszik a zöld lámpa
+            liveTimeoutRef.current = setTimeout(() => setIsLive(false), 3000);
+          } else {
+            setIsLive(false);
+          }
         }
       },
-      error: (error) => console.error("[AppSync] Subscription error:", error),
+      error: (error) => {
+        console.error("[AppSync] Subscription error:", error);
+        setIsLive(false);
+      },
     });
-
     return () => {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
     };
   }, []); // Only run on mount
 
-  
+
   const formatTimestamp = (log) => {
        if (!log.received_at) return 'Invalid Date';
     const date = new Date(log.received_at);
