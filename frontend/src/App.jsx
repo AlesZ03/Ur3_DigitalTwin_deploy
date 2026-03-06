@@ -18,7 +18,6 @@ export default function RobotLogsDashboard() {
   const [isLive, setIsLive] = useState(false);
   const liveTimeoutRef = React.useRef(null);
 
-  // Create the Amplify client (v6+ style)
   const client = generateClient();
 
   const API_URL = process.env.REACT_APP_API_URL ;
@@ -89,7 +88,6 @@ export default function RobotLogsDashboard() {
   }, [QUICK_COMMAND_API_URL]);
 
   useEffect(() => {
-    // GraphQL subscription for real-time data
     const subscriptionQuery = /* GraphQL */ `
       subscription OnUr3ShadowUpdate {
         onUr3ShadowUpdate {
@@ -104,19 +102,53 @@ export default function RobotLogsDashboard() {
       }
     `;
 
+    const GET_INITIAL_STATE = /* GraphQL */ `
+      query GetInitialState {
+        getLatestShadowUpdate {
+          state {
+            reported {
+              joint_positions
+            }
+          }
+        }
+      }
+    `;
+
+    // --- ÚJ RÉSZ: Kezdeti állapot lekérése ---
+    const fetchInitialState = async () => {
+      try {
+        const response = await client.graphql({
+          query: GET_INITIAL_STATE
+        });
+        
+        const initialShadow = response.data.getLatestShadowUpdate;
+        console.log("[AppSync] Initial state from Shadow:", initialShadow);
+
+        if (initialShadow?.state?.reported?.joint_positions) {
+          setRealtimeJointData(initialShadow.state.reported.joint_positions);
+          // Opcionálisan beállíthatod az isLive-ot is egy pillanatra, hogy látszódjon a frissülés
+          setIsLive(true);
+          setTimeout(() => setIsLive(false), 2000);
+        }
+      } catch (err) {
+        console.error("[AppSync] Error fetching initial shadow:", err);
+      }
+    };
+
+    // Meghívjuk az aszinkron lekérdezést
+    fetchInitialState();
+    // ----------------------------------------
+
     const subscription = client.graphql({
       query: subscriptionQuery
     }).subscribe({
-      // A { provider, value } helyett most már egyből a { data } jön!
       next: ({ data }) => {
-        // Így már közvetlenül a data objektumból tudjuk olvasni a mutációt
         const shadowData = data.onUr3ShadowUpdate;
         console.log("[AppSync] Shadow update received:", shadowData);
 
         if (shadowData?.state?.reported?.joint_positions) {
           setRealtimeJointData(shadowData.state.reported.joint_positions);
           
-          // Visszajelzés, hogy élő adat jön
           setIsLive(true);
           if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
           liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
@@ -124,12 +156,14 @@ export default function RobotLogsDashboard() {
       },
       error: (error) => console.error("[AppSync] Subscription error:", error),
     });
+
     return () => {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
     };
   }, []); // Only run on mount
 
+  
   const formatTimestamp = (log) => {
        if (!log.received_at) return 'Invalid Date';
     const date = new Date(log.received_at);
