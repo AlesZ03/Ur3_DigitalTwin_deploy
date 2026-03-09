@@ -189,13 +189,31 @@ export default function RobotLogsDashboard() {
       return;
     }
 
+    // ---------------- ÚJ RÉSZ: Aktuális pozíció automatikus csatolása ----------------
+    // 1. Elsődlegesen a valós idejű AppSync adatot próbáljuk használni
+    let currentJoints = realtimeJointData;
+    
+    // 2. Ha az nincs (mert pl. offline a robot), a legfrissebb S3 logból vesszük ki
+    if (!currentJoints && logs.length > 0) {
+      currentJoints = logs[0]?.data?.joint_positions || logs[0]?.data?.joints;
+    }
+
+    // 3. Lemásoljuk a kapott parancsot, hogy ne módosítsuk az eredetit (React best practice)
+    const finalCommand = { ...command };
+    
+    // 4. Ha van aktuális ízületi adatunk, és a felhasználó nem írta be kézzel a JSON-ba, hozzáadjuk
+    if (currentJoints && !finalCommand.current_joints && finalCommand.target_xyz) {
+      finalCommand.current_joints = currentJoints;
+      console.log("Automatikus current_joints hozzáadva az IK parancshoz:", currentJoints);
+    }
+   
     try {
       const response = await fetch(COMMAND_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ command })
+        body: JSON.stringify({ command: finalCommand }) // Itt már a kiegészített parancsot küldjük!
       });
 
       const data = await response.json();
@@ -219,7 +237,6 @@ export default function RobotLogsDashboard() {
       setSending(false);
     }
   };
-
   const handleSendCustomCommand = () => {
     if (!commandInput.trim()) return;
     try {
