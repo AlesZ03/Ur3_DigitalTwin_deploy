@@ -21,12 +21,21 @@ const ReplayControls = ({
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('16:00');
 
-  const handleFetch = () => {
-    fetchReplayLogs(date, startTime, endTime);
+const handleFetch = () => {
+  
+    const startDateTime = new Date(`${date}T${startTime}:00`);
+    const endDateTime = new Date(`${date}T${endTime}:00`);
+
+    
+    const utcStartTime = `${String(startDateTime.getUTCHours()).padStart(2, '0')}:${String(startDateTime.getUTCMinutes()).padStart(2, '0')}`;
+    const utcEndTime = `${String(endDateTime.getUTCHours()).padStart(2, '0')}:${String(endDateTime.getUTCMinutes()).padStart(2, '0')}`;
+
+
+    fetchReplayLogs(date, utcStartTime, utcEndTime);
+    
     setProgress(0);
     setIsPlaying(false);
   };
-
 
   const isReplayActive = isPlaying || progress > 0;
 

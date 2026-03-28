@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// ÚJ: Behoztuk az 'Info' ikont a rendszerüzenetekhez
+
 import { RefreshCw, Database, Clock, FileText, AlertCircle, Info } from 'lucide-react';
 import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
@@ -19,7 +19,7 @@ export default function RobotLogsDashboard() {
   
   // ÚJ ÁLLAPOT: A Lambda által visszaküldött nyomozási üzenet tárolására
   const [infoMessage, setInfoMessage] = useState(null);
-  
+  const lastLiveTimestampRef = React.useRef(null);
   const liveTimeoutRef = React.useRef(null);
   const client = generateClient();
 
@@ -167,7 +167,10 @@ export default function RobotLogsDashboard() {
           setRealtimeJointData(shadowData.state.reported.joint_positions);
           
           const msgTimestamp = shadowData.state.reported.timestamp;
-          const now = Date.now() / 1000;
+          if (msgTimestamp > lastLiveTimestampRef.current) {
+            setRealtimeJointData(shadowData.state.reported.joint_positions);
+            lastLiveTimestampRef.current = msgTimestamp;
+          const now = Math.floor(Date.now() / 1000);
 
           if (now - msgTimestamp < 5) {
             setIsLive(true);
@@ -176,6 +179,7 @@ export default function RobotLogsDashboard() {
           } else {
             setIsLive(false);
           }
+        }
         }
       },
       error: (error) => {
