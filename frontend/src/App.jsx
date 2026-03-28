@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Database, Clock, FileText, AlertCircle } from 'lucide-react';
+// ÚJ: Behoztuk az 'Info' ikont a rendszerüzenetekhez
+import { RefreshCw, Database, Clock, FileText, AlertCircle, Info } from 'lucide-react';
 import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
 
@@ -15,19 +16,22 @@ export default function RobotLogsDashboard() {
   const [realtimeJointData, setRealtimeJointData] = useState(null);
   const [quickCommands, setQuickCommands] = useState([]);
   const [isLive, setIsLive] = useState(false);
+  
+  // ÚJ ÁLLAPOT: A Lambda által visszaküldött nyomozási üzenet tárolására
+  const [infoMessage, setInfoMessage] = useState(null);
+  
   const liveTimeoutRef = React.useRef(null);
-
   const client = generateClient();
 
   const API_URL = process.env.REACT_APP_API_URL;
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL;
   const QUICK_COMMAND_API_URL = process.env.REACT_APP_COMMAND_QUICK_API_URL;
 
-  // MÓDOSÍTOTT: Képes kezelni az óra/perc paramétereket (ha a backend támogatja), 
-  // vagy alapértelmezetten a mai nap legújabb 50 logját kéri le.
+  // --- OKOS FETCH LOGIKA ---
   const fetchLogs = async (dateStr, startTimeStr, endTimeStr) => {
     setLoading(true);
     setError(null);
+    setInfoMessage(null); // Új lekérdezésnél töröljük az előző üzenetet
 
     if (!API_URL || API_URL.includes('your-api-id')) {
       setLoading(false);
@@ -36,13 +40,19 @@ export default function RobotLogsDashboard() {
     }
 
     try {
-      // Ha nem kapunk dátumot (pl. inicializáláskor), a mai napot használjuk
       const targetDate = dateStr || new Date().toISOString().split('T')[0];
       const dateParam = targetDate.replace(/-/g, '/');
 
-      // Megjegyzés: Ha a backend Lambda is tudja kezelni a startTime és endTime paramétereket, 
-      // akkor itt hozzáadhatod őket az URL-hez: `&startTime=${startTimeStr}&endTime=${endTimeStr}`
-      const url = `${API_URL}?date=${dateParam}&limit=50&order=desc`;
+      let url = `${API_URL}?date=${dateParam}&order=desc`;
+
+      // ELDÖNTJÜK A MÓDOT:
+      if (startTimeStr && endTimeStr) {
+        // 1. REPLAY MÓD ("Load Replay" gomb küldi) -> Nincs limit, és van pontos időablak!
+        url += `&startTime=${startTimeStr}&endTime=${endTimeStr}`;
+      } else {
+        // 2. ÉLŐ MÓD ("Refresh", Auto-refresh, vagy "Back to Live") -> Limit 50, hogy villámgyors maradjon!
+        url += `&limit=50`;
+      }
       
       const response = await fetch(url);
 
@@ -51,7 +61,16 @@ export default function RobotLogsDashboard() {
       }
 
       const data = await response.json();
-      setLogs(data || []); 
+
+      // ÚJ ADATSZERKEZET KEZELÉSE: { logs: [], info_message: "..." }
+      if (data && data.logs !== undefined) {
+        setLogs(data.logs || []);
+        setInfoMessage(data.info_message || null);
+      } else {
+        // Biztonsági tartalék, ha még a régi Lambda verzió futna (ami csak tömböt ad)
+        setLogs(Array.isArray(data) ? data : []);
+      }
+      
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Error fetching logs:', err);
@@ -61,23 +80,20 @@ export default function RobotLogsDashboard() {
     }
   };
 
-  // Első betöltéskor
   useEffect(() => {
     fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Automatikus frissítés (Live logok miatt)
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
-      fetchLogs(); // Mindig az aktuális (mai) adatokat frissíti
+      fetchLogs(); 
     }, 10000); 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
-  // Gyorsparancsok lekérése
   useEffect(() => {
     const fetchQuickCommands = async () => {
       if (!QUICK_COMMAND_API_URL || QUICK_COMMAND_API_URL.includes('your-api-id')) {
@@ -98,7 +114,6 @@ export default function RobotLogsDashboard() {
     fetchQuickCommands();
   }, [QUICK_COMMAND_API_URL]);
 
-  // AppSync Live Data (Változatlan)
   useEffect(() => {
     const subscriptionQuery = /* GraphQL */ `
       subscription OnUr3ShadowUpdate {
@@ -263,7 +278,7 @@ export default function RobotLogsDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header (Letisztítva) */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -302,13 +317,24 @@ export default function RobotLogsDashboard() {
           </div>
         </div>
 
-        {/* Error */}
+        {/* Error Üzenet */}
         {error && (
           <div className="mb-6 p-4 bg-red-900/30 border border-red-500 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
             <div>
               <div className="font-medium text-red-400">Error loading logs</div>
               <div className="text-sm text-red-300 mt-1">{error}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ÚJ: Rendszer/Nyomozó Üzenet (A Lambda küldi, ha a gép ki volt kapcsolva) */}
+        {infoMessage && (
+          <div className="mb-6 p-4 bg-blue-900/30 border border-blue-500 rounded-lg flex items-start gap-3 shadow-lg">
+            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium text-blue-400">System Information</div>
+              <div className="text-sm text-blue-300 mt-1">{infoMessage}</div>
             </div>
           </div>
         )}
@@ -345,7 +371,7 @@ export default function RobotLogsDashboard() {
           handleSendCustomCommand={handleSendCustomCommand}
           realtimeJointData={realtimeJointData}
           isLive={isLive}
-          fetchReplayLogs={fetchLogs} // Átadjuk a frissítő függvényt az Időgépnek
+          fetchReplayLogs={fetchLogs} 
         />
       </div>
     </div>
