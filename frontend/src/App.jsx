@@ -49,9 +49,11 @@ export default function RobotLogsDashboard() {
       if (startTimeStr && endTimeStr) {
         // 1. REPLAY MÓD ("Load Replay" gomb küldi) -> Nincs limit, és van pontos időablak!
         url += `&startTime=${startTimeStr}&endTime=${endTimeStr}`;
+        setAutoRefresh(false);
       } else {
         // 2. ÉLŐ MÓD ("Refresh", Auto-refresh, vagy "Back to Live") -> Limit 50, hogy villámgyors maradjon!
         url += `&limit=50`;
+        setAutoRefresh(true);
       }
       
       const response = await fetch(url);
