@@ -3,7 +3,7 @@ import { RefreshCw, Database, Clock, FileText, AlertCircle, Info } from 'lucide-
 import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
 
-// JAVÍTÁS: A klienst a komponensen kívül hozzuk létre, hogy elkerüljük a végtelen ciklust
+// Klienst a komponensen kívül hozzuk létre a végtelen ciklus elkerülésére
 const client = generateClient();
 
 export default function RobotLogsDashboard() {
@@ -20,7 +20,6 @@ export default function RobotLogsDashboard() {
   const [isLive, setIsLive] = useState(false);
   const [infoMessage, setInfoMessage] = useState(null);
 
-  // Referenciák a stabil működéshez
   const lastLiveTimestampRef = useRef(0);
   const liveTimeoutRef = useRef(null);
 
@@ -28,16 +27,27 @@ export default function RobotLogsDashboard() {
   const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL;
   const QUICK_COMMAND_API_URL = process.env.REACT_APP_COMMAND_QUICK_API_URL;
 
+  // Quick Commands lekérése
+  useEffect(() => {
+    const fetchQuickCommands = async () => {
+      if (!QUICK_COMMAND_API_URL || QUICK_COMMAND_API_URL.includes('your-api-id')) return;
+      try {
+        const response = await fetch(QUICK_COMMAND_API_URL);
+        if (response.ok) {
+          const commands = await response.json();
+          setQuickCommands(commands);
+        }
+      } catch (err) {
+        console.error("Error fetching quick commands:", err);
+      }
+    };
+    fetchQuickCommands();
+  }, [QUICK_COMMAND_API_URL]);
+
   const fetchLogs = async (dateStr, startTimeStr, endTimeStr) => {
     setLoading(true);
     setError(null);
     setInfoMessage(null);
-
-    if (!API_URL || API_URL.includes('your-api-id')) {
-      setLoading(false);
-      setError('Frontend not configured: please set REACT_APP_API_URL.');
-      return;
-    }
 
     try {
       const targetDate = dateStr || new Date().toISOString().split('T')[0];
@@ -64,7 +74,6 @@ export default function RobotLogsDashboard() {
       }
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
-      console.error('Error fetching logs:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -82,21 +91,8 @@ export default function RobotLogsDashboard() {
   }, [autoRefresh]);
 
   useEffect(() => {
-    const subscriptionQuery = `
-      subscription OnUr3ShadowUpdate {
-        onUr3ShadowUpdate {
-          state { reported { joint_positions timestamp } }
-        }
-      }
-    `;
-
-    const GET_INITIAL_STATE = `
-      query GetInitialState {
-        getLatestShadowUpdate {
-          state { reported { joint_positions timestamp } }
-        }
-      }
-    `;
+    const subscriptionQuery = `subscription OnUr3ShadowUpdate { onUr3ShadowUpdate { state { reported { joint_positions timestamp } } } }`;
+    const GET_INITIAL_STATE = `query GetInitialState { getLatestShadowUpdate { state { reported { joint_positions timestamp } } } }`;
 
     let hasReceivedSubscriptionData = false;
 
@@ -104,15 +100,12 @@ export default function RobotLogsDashboard() {
       try {
         const response = await client.graphql({ query: GET_INITIAL_STATE });
         const initialShadow = response.data?.getLatestShadowUpdate;
-        
-        // JAVÍTÁS: Csak akkor fogadjuk el a Shadow-t, ha még nem jött frissebb adat a WebSocketen
         if (!hasReceivedSubscriptionData && initialShadow?.state?.reported?.joint_positions) {
           setRealtimeJointData(initialShadow.state.reported.joint_positions);
-          setIsLive(true);
-          setTimeout(() => setIsLive(false), 2000);
+          // Indításkor NEM váltunk Live-ra (piros marad), csak betöltjük a pózt
         }
       } catch (err) {
-        console.warn("[AppSync] Shadow initial state error (normal if empty):", err);
+        console.warn("[AppSync] Shadow empty or error.");
       }
     };
 
@@ -125,7 +118,6 @@ export default function RobotLogsDashboard() {
           hasReceivedSubscriptionData = true;
           const msgTimestamp = reported.timestamp || 0;
 
-          // JAVÍTÁS: Várkapus a rángatás ellen
           if (msgTimestamp >= lastLiveTimestampRef.current) {
             lastLiveTimestampRef.current = msgTimestamp;
             setRealtimeJointData(reported.joint_positions);
@@ -136,23 +128,18 @@ export default function RobotLogsDashboard() {
           }
         }
       },
-      error: (error) => console.error("[AppSync] Subscription error:", error)
+      error: (error) => setIsLive(false)
     });
 
     return () => {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
     };
-  }, []); // JAVÍTÁS: Üres tömb, hogy ne fusson végtelen ciklusban
-
-  const formatTimestamp = (log) => {
-    if (!log.received_at) return 'Invalid Date';
-    const date = new Date(log.received_at);
-    return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString('hu-HU');
-  };
+  }, []);
 
   const sendCommand = async (command) => {
     setSending(true);
+    setCommandStatus(null);
     try {
       const response = await fetch(COMMAND_API_URL, {
         method: 'POST',
@@ -161,7 +148,7 @@ export default function RobotLogsDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        setCommandStatus({ type: 'success', message: 'Command sent!' });
+        setCommandStatus({ type: 'success', message: 'Command sent successfully!' });
         setTimeout(() => setCommandStatus(null), 5000);
       }
     } catch (err) {
@@ -174,15 +161,15 @@ export default function RobotLogsDashboard() {
   const renderRobotData = (data) => {
     const rawJointData = data.joint_positions || data.joints;
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {rawJointData && (
-          <div className="text-xs text-gray-300 font-mono">
-            Raw: [{rawJointData.map(j => parseFloat(j).toFixed(4)).join(', ')}]
+          <div className="text-[11px] text-gray-300 font-mono">
+            RAW: [{rawJointData.map(j => parseFloat(j).toFixed(3)).join(', ')}]
           </div>
         )}
-        <details className="text-xs">
-          <summary className="text-gray-400 cursor-pointer">View full JSON</summary>
-          <pre className="mt-2 p-2 bg-black/30 rounded text-[10px]">{JSON.stringify(data, null, 2)}</pre>
+        <details className="text-[10px] text-gray-500">
+          <summary className="cursor-pointer hover:text-gray-300">Expand JSON</summary>
+          <pre className="mt-1 p-1 bg-black/20 rounded">{JSON.stringify(data, null, 2)}</pre>
         </details>
       </div>
     );
@@ -194,32 +181,38 @@ export default function RobotLogsDashboard() {
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
             <Database className="w-10 h-10 text-blue-400" />
-            <h1 className="text-3xl font-bold">Robot Logs</h1>
+            <div>
+              <h1 className="text-3xl font-bold">Robot Control Center</h1>
+              <p className="text-gray-400 text-sm">Industrial UR3 Digital Twin</p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
+            <label className="flex items-center gap-2 text-sm cursor-pointer bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">
+              <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="accent-blue-500" />
               Auto-refresh
             </label>
-            <button onClick={() => fetchLogs()} className="px-3 py-1.5 bg-gray-800 rounded-lg text-sm border border-gray-700">
+            <button onClick={() => fetchLogs()} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition">
               <RefreshCw className={`w-4 h-4 inline mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </button>
           </div>
         </div>
 
-        {infoMessage && (
-          <div className="mb-6 p-4 bg-blue-900/30 border border-blue-500 rounded-lg flex gap-3">
-            <Info className="text-blue-400" />
-            <div className="text-sm">{infoMessage}</div>
+        {(error || infoMessage || commandStatus) && (
+          <div className="space-y-3 mb-6">
+            {infoMessage && <div className="p-4 bg-blue-900/20 border border-blue-500/50 rounded-lg text-blue-200 text-sm flex gap-3"><Info/>{infoMessage}</div>}
+            {error && <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-200 text-sm flex gap-3"><AlertCircle/>{error}</div>}
+            {commandStatus && <div className={`p-4 border rounded-lg text-sm ${commandStatus.type === 'success' ? 'bg-green-900/20 border-green-500/50 text-green-200' : 'bg-red-900/20 border-red-500/50 text-red-200'}`}>{commandStatus.message}</div>}
           </div>
         )}
 
         <NewLayout
-          loading={loading} logs={logs} formatTimestamp={formatTimestamp}
-          renderRobotData={renderRobotData} quickCommands={quickCommands}
-          sendCommand={sendCommand} sending={sending} commandInput={commandInput}
-          setCommandInput={setCommandInput} realtimeJointData={realtimeJointData}
-          isLive={isLive} fetchReplayLogs={fetchLogs} 
+          {...{loading, logs, realtimeJointData, isLive, quickCommands, sending, commandInput}}
+          formatTimestamp={(log) => new Date(log.received_at).toLocaleString('hu-HU')}
+          renderRobotData={renderRobotData}
+          sendCommand={sendCommand}
+          setCommandInput={setCommandInput}
+          handleSendCustomCommand={() => { try { sendCommand(JSON.parse(commandInput)); setCommandInput(''); } catch(e) { alert("Invalid JSON"); } }}
+          fetchReplayLogs={fetchLogs}
         />
       </div>
     </div>
