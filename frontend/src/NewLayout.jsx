@@ -363,9 +363,9 @@ export default function NewLayout({
 
   const isReplayMode = chronologicalLogs.length > 0 && (isPlaying || replayIndex > 0);
   
-  const jointDataForModel = isReplayMode 
-    ? chronologicalLogs[replayIndex]?.data?.joint_positions || chronologicalLogs[replayIndex]?.data?.joints
-    : realtimeJointData;
+ const jointDataForModel = isReplayMode 
+    ? chronologicalLogs[replayIndex]?.data?.corrected_joints || chronologicalLogs[replayIndex]?.data?.joint_positions
+    : realtimeJointData?.corrected_joints || realtimeJointData?.joint_positions || realtimeJointData;
 
   const handleSliderChange = (newIndex) => {
     setReplayIndex(newIndex);

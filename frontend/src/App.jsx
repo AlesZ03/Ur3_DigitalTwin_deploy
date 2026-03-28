@@ -247,15 +247,21 @@ export default function RobotLogsDashboard() {
     }
   };
 
-  const renderRobotData = (data) => {
+const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
-    const jointData = data.joint_positions || data.joints;
+    
+  
+    const rawJointData = data.joint_positions || data.joints;
+    
     return (
       <div className="space-y-2">
-        {jointData && (
+        {rawJointData && (
           <div className="text-xs">
-            <span className="text-gray-400">Joints:</span>
-            <span className="ml-2 text-gray-300 font-mono">[{jointData.map(j => j?.toFixed(2)).join(', ')}]</span>
+            <span className="text-gray-400">Raw Joints (Physical):</span>
+            <span className="ml-2 text-gray-300 font-mono">
+              {/* Biztosítjuk, hogy a számokat szépen, 4 tizedesjeggyel írja ki */}
+              [{rawJointData.map(j => (typeof j === 'number' ? j.toFixed(4) : parseFloat(j).toFixed(4))).join(', ')}]
+            </span>
           </div>
         )}
         {data.status && (
@@ -264,9 +270,11 @@ export default function RobotLogsDashboard() {
             <span className="ml-2 text-green-400">{data.status}</span>
           </div>
         )}
+        
+        {/* A "More data" lenyíló fülön megmutatjuk a teljes JSON-t, de a nyers marad a fókuszban */}
         {Object.keys(data).filter(k => !['position', 'joints', 'status'].includes(k)).length > 0 && (
           <details className="text-xs">
-            <summary className="text-gray-400 cursor-pointer hover:text-gray-300">More data...</summary>
+            <summary className="text-gray-400 cursor-pointer hover:text-gray-300">More data (incl. corrected)...</summary>
             <pre className="mt-2 p-2 bg-gray-900/50 rounded text-gray-300 font-mono text-[10px] leading-relaxed overflow-x-auto">
               {JSON.stringify(data, null, 2)}
             </pre>
