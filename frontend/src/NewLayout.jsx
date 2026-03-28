@@ -30,7 +30,12 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
           <button onClick={() => setIsPlaying(!isPlaying)} disabled={logsCount === 0} className={`p-2 rounded-lg ${isPlaying ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{isPlaying ? <Pause/> : <Play/>}</button>
           <div className="flex items-center gap-2 px-2 border-l border-gray-700"><FastForward className="w-4 h-4 text-gray-500"/>
             <select value={playbackSpeed} onChange={e => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm outline-none cursor-pointer">
-              <option value={0.5}>0.5x</option><option value={1}>1x</option><option value={2}>2x</option><option value={5}>5x</option><option value={10}>10x</option>
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+              <option value={5}>5x</option>
+              <option value={10}>10x</option>
+              <option value={100}>100x</option>
             </select>
           </div>
         </div>
