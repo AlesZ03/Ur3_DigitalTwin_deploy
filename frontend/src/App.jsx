@@ -19,7 +19,7 @@ export default function RobotLogsDashboard() {
   
   // ÚJ ÁLLAPOT: A Lambda által visszaküldött nyomozási üzenet tárolására
   const [infoMessage, setInfoMessage] = useState(null);
-  const lastLiveTimestampRef = React.useRef(null);
+  const lastLiveTimestampRef = React.useRef(0);
   const liveTimeoutRef = React.useRef(null);
   const client = generateClient();
 
@@ -142,13 +142,18 @@ export default function RobotLogsDashboard() {
         }
       }
     `;
-
+    let hasReceivedSubscriptionData = false;
     const fetchInitialState = async () => {
       try {
         const response = await client.graphql({ query: GET_INITIAL_STATE });
         const initialShadow = response.data.getLatestShadowUpdate;
-        if (initialShadow?.state?.reported?.joint_positions) {
+        
+        // Csak akkor engedjük be a kezdőállapotot, ha a gyorsabb WebSocketen még nem jött friss adat!
+        if (!hasReceivedSubscriptionData && initialShadow?.state?.reported?.joint_positions) {
+          // Élőben csak a tömböt mentjük el, mert az AppSync már elvégezte rajta a Pi/2 matekot!
           setRealtimeJointData(initialShadow.state.reported.joint_positions);
+          
+          setIsLive(true);
           setTimeout(() => setIsLive(false), 2000);
         }
       } catch (err) {
@@ -162,24 +167,23 @@ export default function RobotLogsDashboard() {
       query: subscriptionQuery
     }).subscribe({
       next: ({ data }) => {
-        const shadowData = data.onUr3ShadowUpdate;
-        if (shadowData?.state?.reported?.joint_positions) {
-          setRealtimeJointData(shadowData.state.reported.joint_positions);
+        const reported = data.onUr3ShadowUpdate?.state?.reported;
+        
+        if (reported?.joint_positions) {
+          hasReceivedSubscriptionData = true;
           
-          const msgTimestamp = shadowData.state.reported.timestamp;
-          if (msgTimestamp > lastLiveTimestampRef.current) {
-            setRealtimeJointData(shadowData.state.reported.joint_positions);
+          const msgTimestamp = reported.timestamp || 0;
+          
+         
+          if (msgTimestamp >= lastLiveTimestampRef.current) {
             lastLiveTimestampRef.current = msgTimestamp;
-          const now = Math.floor(Date.now() / 1000);
-
-          if (now - msgTimestamp < 5) {
+            setRealtimeJointData(reported.joint_positions); 
+            
+            
             setIsLive(true);
             if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
             liveTimeoutRef.current = setTimeout(() => setIsLive(false), 3000);
-          } else {
-            setIsLive(false);
           }
-        }
         }
       },
       error: (error) => {
@@ -187,6 +191,7 @@ export default function RobotLogsDashboard() {
         setIsLive(false);
       },
     });
+
     return () => {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
