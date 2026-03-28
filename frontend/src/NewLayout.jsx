@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import * as THREE from 'three';
-import { RefreshCw, FileText, Send, Play, Pause, FastForward, Clock, Calendar } from 'lucide-react';
+import { RefreshCw, FileText, Send, Play, Pause, FastForward, Clock, Calendar, Activity } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Preload } from '@react-three/drei';
 
-// --- ÚJ: IDŐGÉP VEZÉRLŐPANEL ---
+
 const ReplayControls = ({ 
   fetchReplayLogs, 
   isPlaying, 
@@ -13,7 +14,8 @@ const ReplayControls = ({
   setPlaybackSpeed, 
   progress, 
   setProgress,
-  logsCount
+  logsCount,
+  handleGoLive 
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('08:00');
@@ -24,6 +26,9 @@ const ReplayControls = ({
     setProgress(0);
     setIsPlaying(false);
   };
+
+
+  const isReplayActive = isPlaying || progress > 0;
 
   return (
     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 mb-6 shadow-lg shadow-black/20">
@@ -36,15 +41,28 @@ const ReplayControls = ({
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3"/> Start Time</label>
+            <label className="block text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3"/> Start</label>
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3"/> End Time</label>
+            <label className="block text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3"/> End</label>
             <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           <button onClick={handleFetch} className="h-9 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition shadow-md">
-            Load Replay Data
+            Load Replay
+          </button>
+
+          {/* ÚJ: Back to Live gomb */}
+          <button 
+            onClick={handleGoLive} 
+            className={`h-9 px-4 flex items-center gap-2 rounded-lg text-sm font-medium transition shadow-md ${
+              isReplayActive 
+                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/50' 
+                : 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-gray-600'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            Back to Live
           </button>
         </div>
 
@@ -83,22 +101,22 @@ const ReplayControls = ({
           <input 
             type="range" 
             min="0" 
-            max={logsCount - 1} 
+            max={logsCount > 0 ? logsCount - 1 : 0} 
             value={progress}
             onChange={(e) => {
               setProgress(Number(e.target.value));
-              setIsPlaying(false); // Megállítjuk a lejátszást amíg húzogatja
+              setIsPlaying(false);
             }}
             className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
           />
-          <span className="text-xs text-gray-500 font-mono w-6">{logsCount - 1}</span>
+          <span className="text-xs text-gray-500 font-mono w-6">{logsCount > 0 ? logsCount - 1 : 0}</span>
         </div>
       )}
     </div>
   );
 };
 
-// --- MEGLÉVŐ KOMPONENSEK (Változatlanul) ---
+
 const LogsPanel = ({ loading, logs, formatTimestamp, renderRobotData }) => {
   if (loading && logs.length === 0) {
     return (
@@ -221,7 +239,7 @@ function RobotModel({ jointData, ...props }) {
           joint.rotation[mapping.axis] = THREE.MathUtils.lerp(
             joint.rotation[mapping.axis], 
             targetRotation, 
-            0.15 // Kicsit gyorsabb lerp, hogy responzívabb legyen a tekerésnél
+            0.15
           );
         }
       });
@@ -293,7 +311,7 @@ export default function NewLayout({
   handleSendCustomCommand,
   realtimeJointData,
   isLive,
-  fetchReplayLogs, // Megkapja az App.jsx-ből
+  fetchReplayLogs, 
 }) {
 
   // --- LEJÁTSZÓ MOTOR ÁLLAPOTOK ---
@@ -301,55 +319,63 @@ export default function NewLayout({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [replayIndex, setReplayIndex] = useState(0);
 
-  // A backend csökkenő (desc) sorrendben adja a logokat. 
-  // A lejátszáshoz meg kell fordítanunk, hogy időrendben (asc) haladjunk.
   const chronologicalLogs = useMemo(() => {
     return [...logs].reverse();
   }, [logs]);
 
-  // A tényleges lejátszó logika
+
+  const handleGoLive = () => {
+    setIsPlaying(false);
+    setReplayIndex(0); 
+   
+    fetchReplayLogs(); 
+  };
+
+  // A Klasszikus Loop Lejátszó Motor
   useEffect(() => {
     let timer;
-    if (isPlaying && chronologicalLogs.length > 0 && replayIndex < chronologicalLogs.length - 1) {
-      const currentLog = chronologicalLogs[replayIndex];
-      const nextLog = chronologicalLogs[replayIndex + 1];
-      
-      // Kiszámoljuk az eltelt időt a két log között másodpercben, majd átváltjuk ms-re
-      let diffMs = (nextLog.data.timestamp - currentLog.data.timestamp) * 1000;
-      
-      // Biztosíték: Ha rossz a timestamp vagy túl nagy a szakadék (pl. 1 óra), maximalizáljuk a várakozást
-      if (diffMs < 0 || isNaN(diffMs)) diffMs = 100;
-      if (diffMs > 5000) diffMs = 5000; // Max 5 mp várakozás, ne álljon le teljesen
-      
-      // Alkalmazzuk a felhasználó által választott sebességet
+    if (isPlaying && chronologicalLogs.length > 1) {
+      const maxIndex = chronologicalLogs.length - 1;
+      let nextIndex = replayIndex + 1;
+      let diffMs = 100; 
+
+      if (nextIndex > maxIndex) {
+        nextIndex = 0;
+        diffMs = 1000; 
+      } else {
+        const currentLog = chronologicalLogs[replayIndex];
+        const nextLog = chronologicalLogs[nextIndex];
+        diffMs = (nextLog.data.timestamp - currentLog.data.timestamp) * 1000;
+        
+        if (diffMs < 0 || isNaN(diffMs)) diffMs = 100;
+        if (diffMs > 5000) diffMs = 5000; 
+      }
+
       const timeoutMs = diffMs / playbackSpeed;
 
       timer = setTimeout(() => {
-        setReplayIndex(prev => prev + 1);
+        setReplayIndex(nextIndex);
       }, timeoutMs);
-      
-    } else if (replayIndex >= chronologicalLogs.length - 1 && isPlaying) {
-      // Ha a végére értünk, megáll a lejátszás
-      setIsPlaying(false); 
     }
     
     return () => clearTimeout(timer);
   }, [isPlaying, replayIndex, chronologicalLogs, playbackSpeed]);
 
-
-  // --- DÖNTÉS: ÉLŐ VAGY VISSZAJÁTSZÁS ---
-  // Ha elmozdítottuk a csúszkát 0-ról, vagy épp megy a lejátszás, akkor Replay módban vagyunk
   const isReplayMode = chronologicalLogs.length > 0 && (isPlaying || replayIndex > 0);
   
-  // A modell az alapján kap adatot, hogy melyik módban vagyunk
   const jointDataForModel = isReplayMode 
     ? chronologicalLogs[replayIndex]?.data?.joint_positions || chronologicalLogs[replayIndex]?.data?.joints
     : realtimeJointData;
 
+  const handleSliderChange = (newIndex) => {
+    setReplayIndex(newIndex);
+    setIsPlaying(false);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       
-      {/* 1. Az Időgép Vezérlőpanelje */}
+      {/* 1. Az Időgép Vezérlőpanelje - Új handleGoLive prop átadva */}
       <ReplayControls 
         fetchReplayLogs={fetchReplayLogs}
         isPlaying={isPlaying}
@@ -357,11 +383,12 @@ export default function NewLayout({
         playbackSpeed={playbackSpeed}
         setPlaybackSpeed={setPlaybackSpeed}
         progress={replayIndex}
-        setProgress={setReplayIndex}
+        setProgress={handleSliderChange} 
         logsCount={chronologicalLogs.length}
+        handleGoLive={handleGoLive}
       />
 
-      {/* 2. Digital Twin (Módosítva, hogy jelezze a Replay módot) */}
+      {/* 2. Digital Twin */}
       <DigitalTwinPanel 
         jointData={jointDataForModel} 
         isLive={isLive} 
