@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Database, Clock, FileText, AlertCircle, Send } from 'lucide-react';
+import { RefreshCw, Database, Clock, FileText, AlertCircle } from 'lucide-react';
 import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
 
@@ -7,7 +7,6 @@ export default function RobotLogsDashboard() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [commandInput, setCommandInput] = useState('');
@@ -20,11 +19,13 @@ export default function RobotLogsDashboard() {
 
   const client = generateClient();
 
-  const API_URL = process.env.REACT_APP_API_URL ;
-  const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL ;
+  const API_URL = process.env.REACT_APP_API_URL;
+  const COMMAND_API_URL = process.env.REACT_APP_COMMAND_API_URL;
   const QUICK_COMMAND_API_URL = process.env.REACT_APP_COMMAND_QUICK_API_URL;
 
-  const fetchLogs = async (date = selectedDate) => {
+  // MÓDOSÍTOTT: Képes kezelni az óra/perc paramétereket (ha a backend támogatja), 
+  // vagy alapértelmezetten a mai nap legújabb 50 logját kéri le.
+  const fetchLogs = async (dateStr, startTimeStr, endTimeStr) => {
     setLoading(true);
     setError(null);
 
@@ -35,16 +36,21 @@ export default function RobotLogsDashboard() {
     }
 
     try {
-      const dateParam = date.replace(/-/g, '/');
+      // Ha nem kapunk dátumot (pl. inicializáláskor), a mai napot használjuk
+      const targetDate = dateStr || new Date().toISOString().split('T')[0];
+      const dateParam = targetDate.replace(/-/g, '/');
 
-     const response = await fetch(`${API_URL}?date=${dateParam}&limit=50&order=desc`);
+      // Megjegyzés: Ha a backend Lambda is tudja kezelni a startTime és endTime paramétereket, 
+      // akkor itt hozzáadhatod őket az URL-hez: `&startTime=${startTimeStr}&endTime=${endTimeStr}`
+      const url = `${API_URL}?date=${dateParam}&limit=50&order=desc`;
+      
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-
       setLogs(data || []); 
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
@@ -55,18 +61,23 @@ export default function RobotLogsDashboard() {
     }
   };
 
+  // Első betöltéskor
   useEffect(() => {
     fetchLogs();
-  }, [selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Automatikus frissítés (Live logok miatt)
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
-      fetchLogs();
+      fetchLogs(); // Mindig az aktuális (mai) adatokat frissíti
     }, 10000); 
     return () => clearInterval(interval);
-  }, [autoRefresh, selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh]);
 
+  // Gyorsparancsok lekérése
   useEffect(() => {
     const fetchQuickCommands = async () => {
       if (!QUICK_COMMAND_API_URL || QUICK_COMMAND_API_URL.includes('your-api-id')) {
@@ -87,6 +98,7 @@ export default function RobotLogsDashboard() {
     fetchQuickCommands();
   }, [QUICK_COMMAND_API_URL]);
 
+  // AppSync Live Data (Változatlan)
   useEffect(() => {
     const subscriptionQuery = /* GraphQL */ `
       subscription OnUr3ShadowUpdate {
@@ -114,19 +126,12 @@ export default function RobotLogsDashboard() {
       }
     `;
 
-   
     const fetchInitialState = async () => {
       try {
-        const response = await client.graphql({
-          query: GET_INITIAL_STATE
-        });
-        
+        const response = await client.graphql({ query: GET_INITIAL_STATE });
         const initialShadow = response.data.getLatestShadowUpdate;
-        console.log("[AppSync] Initial state from Shadow:", initialShadow);
-
         if (initialShadow?.state?.reported?.joint_positions) {
           setRealtimeJointData(initialShadow.state.reported.joint_positions);
-
           setTimeout(() => setIsLive(false), 2000);
         }
       } catch (err) {
@@ -134,19 +139,15 @@ export default function RobotLogsDashboard() {
       }
     };
 
-
     fetchInitialState();
- 
 
     const subscription = client.graphql({
       query: subscriptionQuery
     }).subscribe({
       next: ({ data }) => {
         const shadowData = data.onUr3ShadowUpdate;
-        
         if (shadowData?.state?.reported?.joint_positions) {
           setRealtimeJointData(shadowData.state.reported.joint_positions);
-          
           
           const msgTimestamp = shadowData.state.reported.timestamp;
           const now = Date.now() / 1000;
@@ -154,7 +155,6 @@ export default function RobotLogsDashboard() {
           if (now - msgTimestamp < 5) {
             setIsLive(true);
             if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
-           
             liveTimeoutRef.current = setTimeout(() => setIsLive(false), 3000);
           } else {
             setIsLive(false);
@@ -170,8 +170,7 @@ export default function RobotLogsDashboard() {
       subscription.unsubscribe();
       if (liveTimeoutRef.current) clearTimeout(liveTimeoutRef.current);
     };
-  }, []); 
-
+  }, [client]); 
 
   const formatTimestamp = (log) => {
        if (!log.received_at) return 'Invalid Date';
@@ -184,59 +183,42 @@ export default function RobotLogsDashboard() {
     setSending(true);
     setCommandStatus(null);
     if (!COMMAND_API_URL || COMMAND_API_URL.includes('your-api-id')) {
-      setCommandStatus({ type: 'error', message: 'Frontend not configured: set REACT_APP_COMMAND_API_URL and rebuild.' });
+      setCommandStatus({ type: 'error', message: 'Frontend not configured.' });
       setSending(false);
       return;
     }
 
-    // ---------------- ÚJ RÉSZ: Aktuális pozíció automatikus csatolása ----------------
-    // 1. Elsődlegesen a valós idejű AppSync adatot próbáljuk használni
     let currentJoints = realtimeJointData;
-    
-    // 2. Ha az nincs (mert pl. offline a robot), a legfrissebb S3 logból vesszük ki
     if (!currentJoints && logs.length > 0) {
       currentJoints = logs[0]?.data?.joint_positions || logs[0]?.data?.joints;
     }
 
-    // 3. Lemásoljuk a kapott parancsot, hogy ne módosítsuk az eredetit (React best practice)
     const finalCommand = { ...command };
     
-    // 4. Ha van aktuális ízületi adatunk, és a felhasználó nem írta be kézzel a JSON-ba, hozzáadjuk
     if (currentJoints && !finalCommand.current_joints && finalCommand.target_xyz) {
       finalCommand.current_joints = currentJoints;
-      console.log("Automatikus current_joints hozzáadva az IK parancshoz:", currentJoints);
     }
    
     try {
       const response = await fetch(COMMAND_API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ command: finalCommand }) // Itt már a kiegészített parancsot küldjük!
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: finalCommand })
       });
-
       const data = await response.json();
-
       if (data.success) {
-        setCommandStatus({
-          type: 'success',
-          message: 'Command sent successfully!',
-          details: data
-        });
+        setCommandStatus({ type: 'success', message: 'Command sent successfully!', details: data });
         setTimeout(() => setCommandStatus(null), 5000);
       } else {
         throw new Error(data.error || 'Failed to send command');
       }
     } catch (err) {
-      setCommandStatus({
-        type: 'error',
-        message: err.message
-      });
+      setCommandStatus({ type: 'error', message: err.message });
     } finally {
       setSending(false);
     }
   };
+
   const handleSendCustomCommand = () => {
     if (!commandInput.trim()) return;
     try {
@@ -244,18 +226,13 @@ export default function RobotLogsDashboard() {
       sendCommand(command);
       setCommandInput('');
     } catch (err) {
-      setCommandStatus({
-        type: 'error',
-        message: 'Invalid JSON format'
-      });
+      setCommandStatus({ type: 'error', message: 'Invalid JSON format' });
     }
   };
 
   const renderRobotData = (data) => {
     if (!data) return <span className="text-gray-500">No data</span>;
-
     const jointData = data.joint_positions || data.joints;
-
     return (
       <div className="space-y-2">
         {jointData && (
@@ -264,19 +241,15 @@ export default function RobotLogsDashboard() {
             <span className="ml-2 text-gray-300 font-mono">[{jointData.map(j => j?.toFixed(2)).join(', ')}]</span>
           </div>
         )}
-
         {data.status && (
           <div className="text-xs mt-1">
             <span className="text-gray-400">Status:</span>
             <span className="ml-2 text-green-400">{data.status}</span>
           </div>
         )}
-
         {Object.keys(data).filter(k => !['position', 'joints', 'status'].includes(k)).length > 0 && (
           <details className="text-xs">
-            <summary className="text-gray-400 cursor-pointer hover:text-gray-300">
-              More data...
-            </summary>
+            <summary className="text-gray-400 cursor-pointer hover:text-gray-300">More data...</summary>
             <pre className="mt-2 p-2 bg-gray-900/50 rounded text-gray-300 font-mono text-[10px] leading-relaxed overflow-x-auto">
               {JSON.stringify(data, null, 2)}
             </pre>
@@ -290,14 +263,14 @@ export default function RobotLogsDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
+        {/* Header (Letisztítva) */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Database className="w-10 h-10 text-blue-400" />
               <div>
                 <h1 className="text-3xl font-bold">Robot Logs Dashboard</h1>
-                <p className="text-gray-400">View robot data from S3 storage</p>
+                <p className="text-gray-400">Digital Twin & Replay System</p>
               </div>
             </div>
 
@@ -315,35 +288,16 @@ export default function RobotLogsDashboard() {
                   onChange={(e) => setAutoRefresh(e.target.checked)}
                   className="w-4 h-4"
                 />
-                <span className="text-sm">Auto-refresh</span>
+                <span className="text-sm">Auto-refresh Live Data</span>
               </label>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-4 bg-gray-800 p-4 rounded-lg border border-gray-700">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-400">Date:</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              onClick={() => fetchLogs()}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded-lg transition"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-            <div className="ml-auto flex items-center gap-2 text-sm">
-              <FileText className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-400">
-                {logs.length} log{logs.length !== 1 ? 's' : ''}
-              </span>
+              <button
+                onClick={() => fetchLogs()}
+                disabled={loading}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 disabled:opacity-50 rounded-lg transition text-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
             </div>
           </div>
         </div>
@@ -364,13 +318,9 @@ export default function RobotLogsDashboard() {
           <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
             commandStatus.type === 'success' ? 'bg-green-900/30 border border-green-700' : 'bg-red-900/30 border border-red-500'
           }`}>
-            <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-              commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
-            }`} />
+            <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'}`} />
             <div>
-              <div className={`font-medium ${
-                commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
-              }`}>
+              <div className={`font-medium ${commandStatus.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
                 {commandStatus.message}
               </div>
               {commandStatus.details && (
@@ -395,6 +345,7 @@ export default function RobotLogsDashboard() {
           handleSendCustomCommand={handleSendCustomCommand}
           realtimeJointData={realtimeJointData}
           isLive={isLive}
+          fetchReplayLogs={fetchLogs} // Átadjuk a frissítő függvényt az Időgépnek
         />
       </div>
     </div>
