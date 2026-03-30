@@ -115,6 +115,7 @@ export default function RobotLogsDashboard() {
       next: ({ data }) => {
         const reported = data.onUr3ShadowUpdate?.state?.reported;
         if (reported?.joint_positions) {
+          console.log(`[HOT_PATH_MARKER] ${reported.joint_positions[0]}`);
           hasReceivedSubscriptionData = true;
           const msgTimestamp = reported.timestamp || 0;
 
