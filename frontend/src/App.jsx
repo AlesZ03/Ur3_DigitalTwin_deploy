@@ -4,7 +4,7 @@ import { generateClient } from 'aws-amplify/api';
 import NewLayout from './NewLayout';
 
 // Klienst a komponensen kívül hozzuk létre a végtelen ciklus elkerülésére
-const client = generateClient();
+
 
 export default function RobotLogsDashboard() {
   const [logs, setLogs] = useState([]);
