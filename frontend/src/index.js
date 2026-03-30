@@ -1,6 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Amplify } from 'aws-amplify';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+// Configure Amplify using the modern, nested v6+ structure
 const amplifyConfig = {
   API: {
     GraphQL: {
@@ -11,13 +16,6 @@ const amplifyConfig = {
     }
   }
 };
-
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
-
-// Configure Amplify using the modern, nested v6+ structure
-
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -44,7 +42,7 @@ if (
     </div>
   );
 } else {
-  // If everything is fine, configure Amplify and render the app.
+
   Amplify.configure(amplifyConfig);
   root.render(
     <React.StrictMode>
@@ -53,7 +51,5 @@ if (
   );
 }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+
 reportWebVitals();

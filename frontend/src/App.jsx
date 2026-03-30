@@ -19,7 +19,7 @@ export default function RobotLogsDashboard() {
   const [quickCommands, setQuickCommands] = useState([]);
   const [isLive, setIsLive] = useState(false);
   const [infoMessage, setInfoMessage] = useState(null);
-
+  const client = React.useMemo(() => generateClient(), []);
   const lastLiveTimestampRef = useRef(0);
   const liveTimeoutRef = useRef(null);
 
