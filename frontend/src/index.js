@@ -1,11 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Amplify } from 'aws-amplify';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
-
-// Configure Amplify using the modern, nested v6+ structure
 const amplifyConfig = {
   API: {
     GraphQL: {
@@ -16,6 +11,13 @@ const amplifyConfig = {
     }
   }
 };
+
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+// Configure Amplify using the modern, nested v6+ structure
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
