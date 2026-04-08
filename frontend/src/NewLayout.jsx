@@ -20,7 +20,7 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 mb-6 shadow-xl">
       <div className="flex flex-wrap items-end gap-4 justify-between">
         
-        {/* 1. JAVÍTÁS: Itt adtuk hozzá a flex-wrap-et */}
+        {/* Reszponzív flex-wrap konténer */}
         <div className="flex flex-wrap gap-4 items-end">
           <div className="space-y-1 w-full sm:w-auto">
             <label className="text-[10px] text-gray-500 uppercase font-bold">Date</label>
@@ -38,11 +38,11 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
           <button onClick={handleGoLive} className="h-9 w-full sm:w-auto px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-bold border border-gray-600 flex items-center justify-center gap-2"><Activity className="w-4 h-4"/>Live</button>
         </div>
 
-        <div className="flex items-center gap-3 bg-gray-900 p-1.5 rounded-lg border border-gray-700">
+        <div className="flex items-center gap-3 bg-gray-900 p-1.5 rounded-lg border border-gray-700 mt-4 sm:mt-0">
           <button onClick={() => setIsPlaying(!isPlaying)} disabled={logsCount === 0} className={`p-2 rounded-lg ${isPlaying ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{isPlaying ? <Pause/> : <Play/>}</button>
           <div className="flex items-center gap-2 px-2 border-l border-gray-700"><FastForward className="w-4 h-4 text-gray-500"/>
             <select value={playbackSpeed} onChange={e => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm outline-none cursor-pointer">
-              {/* 2. JAVÍTÁS: Fehér alap, fekete szöveg a lenyíló listában */}
+              {/* Fehér alapon fekete betűs opciók */}
               <option className="bg-white text-black" value={0.5}>0.5x</option>
               <option className="bg-white text-black" value={1}>1x</option>
               <option className="bg-white text-black" value={2}>2x</option>
@@ -63,6 +63,7 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
       )}
     </div>
   );
+};
 
 function RobotModel({ jointData }) {
   const { scene, nodes } = useGLTF('/robot.glb'); 
