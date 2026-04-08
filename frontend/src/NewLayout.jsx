@@ -19,27 +19,41 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
   return (
     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 mb-6 shadow-xl">
       <div className="flex flex-wrap items-end gap-4 justify-between">
-        <div className="flex gap-4 items-end">
-          <div className="space-y-1"><label className="text-[10px] text-gray-500 uppercase font-bold">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500" /></div>
-          <div className="space-y-1"><label className="text-[10px] text-gray-500 uppercase font-bold">Start</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none" /></div>
-          <div className="space-y-1"><label className="text-[10px] text-gray-500 uppercase font-bold">End</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none" /></div>
-          <button onClick={handleFetch} className="h-9 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold transition">Load Replay</button>
-          <button onClick={handleGoLive} className="h-9 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-bold border border-gray-600 flex items-center gap-2"><Activity className="w-4 h-4"/>Live</button>
+        
+        {/* 1. JAVÍTÁS: Itt adtuk hozzá a flex-wrap-et */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="space-y-1 w-full sm:w-auto">
+            <label className="text-[10px] text-gray-500 uppercase font-bold">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
+          </div>
+          <div className="space-y-1 w-full sm:w-auto">
+            <label className="text-[10px] text-gray-500 uppercase font-bold">Start</label>
+            <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none" />
+          </div>
+          <div className="space-y-1 w-full sm:w-auto">
+            <label className="text-[10px] text-gray-500 uppercase font-bold">End</label>
+            <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm outline-none" />
+          </div>
+          <button onClick={handleFetch} className="h-9 w-full sm:w-auto px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold transition">Load Replay</button>
+          <button onClick={handleGoLive} className="h-9 w-full sm:w-auto px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-bold border border-gray-600 flex items-center justify-center gap-2"><Activity className="w-4 h-4"/>Live</button>
         </div>
+
         <div className="flex items-center gap-3 bg-gray-900 p-1.5 rounded-lg border border-gray-700">
           <button onClick={() => setIsPlaying(!isPlaying)} disabled={logsCount === 0} className={`p-2 rounded-lg ${isPlaying ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>{isPlaying ? <Pause/> : <Play/>}</button>
           <div className="flex items-center gap-2 px-2 border-l border-gray-700"><FastForward className="w-4 h-4 text-gray-500"/>
             <select value={playbackSpeed} onChange={e => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm outline-none cursor-pointer">
-              <option value={0.5}>0.5x</option>
-              <option value={1}>1x</option>
-              <option value={2}>2x</option>
-              <option value={5}>5x</option>
-              <option value={10}>10x</option>
-              <option value={100}>100x</option>
+              {/* 2. JAVÍTÁS: Fehér alap, fekete szöveg a lenyíló listában */}
+              <option className="bg-white text-black" value={0.5}>0.5x</option>
+              <option className="bg-white text-black" value={1}>1x</option>
+              <option className="bg-white text-black" value={2}>2x</option>
+              <option className="bg-white text-black" value={5}>5x</option>
+              <option className="bg-white text-black" value={10}>10x</option>
+              <option className="bg-white text-black" value={100}>100x</option>
             </select>
           </div>
         </div>
       </div>
+      
       {logsCount > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-700 flex items-center gap-4">
           <span className="text-xs font-mono text-gray-500">{progress}</span>
@@ -49,7 +63,6 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
       )}
     </div>
   );
-};
 
 function RobotModel({ jointData }) {
   const { scene, nodes } = useGLTF('/robot.glb'); 
