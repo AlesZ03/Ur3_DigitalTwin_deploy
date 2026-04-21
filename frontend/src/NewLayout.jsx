@@ -72,9 +72,9 @@ function RobotModel({ jointData }) {
   {n:'UR3', a:'y'},           
   {n:'Shoulder', a:'z'},      
   {n:'Elbow', a:'z'},        
-  {n:'Wrist02', a:'y'},       
-  {n:'Wrist03', a:'z'},       
-  {n:'EffectorJoint', a:'y'}  
+  {n:'Wrist02', a:'z'},       
+  {n:'Wrist03', a:'y'},       
+  {n:'EffectorJoint', a:'z'}  
   ], []);
   useEffect(() => { if (nodes) jointRefs.current = mapping.map(m => nodes[m.n]); }, [nodes, mapping]);
   useFrame(() => {
