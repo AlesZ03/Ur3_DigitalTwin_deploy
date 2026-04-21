@@ -68,7 +68,14 @@ const ReplayControls = ({ fetchReplayLogs, isPlaying, setIsPlaying, playbackSpee
 function RobotModel({ jointData }) {
   const { scene, nodes } = useGLTF('/robot.glb'); 
   const jointRefs = React.useRef([]);
-  const mapping = useMemo(() => [{n:'UR3',a:'y'},{n:'Shoulder',a:'z'},{n:'Elbow',a:'z'},{n:'Wrist01',a:'y'},{n:'Wrist02',a:'z'},{n:'Wrist03',a:'y'}], []);
+  const mapping = useMemo(() => [
+  {n:'UR3', a:'y'},           
+  {n:'Shoulder', a:'z'},      
+  {n:'Elbow', a:'z'},        
+  {n:'Wrist02', a:'y'},       
+  {n:'Wrist03', a:'z'},       
+  {n:'EffectorJoint', a:'y'}  
+  ], []);
   useEffect(() => { if (nodes) jointRefs.current = mapping.map(m => nodes[m.n]); }, [nodes, mapping]);
   useFrame(() => {
     if (jointData?.length === 6 && jointRefs.current.length === 6) {
